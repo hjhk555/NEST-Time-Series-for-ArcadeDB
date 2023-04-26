@@ -67,7 +67,7 @@ public class StringStatistics extends Statistics{
 
     @Override
     public void merge(Statistics stats) throws TimeseriesException {
-        if (stats == null)
+        if (stats == null || stats.count == 0)
             return;
         if (stats instanceof StringStatistics sStats){
             count += sStats.count;

@@ -192,7 +192,7 @@ public class StatsBlockLeaf extends StatsBlock{
     public Statistics aggregativeQuery(long startTime, long endTime) throws TimeseriesException {
         // if range out of this block
         if (startTime > statistics.lastTime || endTime < statistics.firstTime){
-            return null;
+            return Statistics.newEmptyStats(dataType);
         }
 
         // if range covers this block

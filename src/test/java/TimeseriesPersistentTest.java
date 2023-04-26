@@ -25,7 +25,7 @@ public class TimeseriesPersistentTest {
         database.commit();
 
 
-        Vertex testVertex = database.lookupByRID(new RID(database, 1, 16), false).asVertex();
+        Vertex testVertex = database.lookupByRID(new RID(database, 1, 1), false).asVertex();
         Logger.logOnStdout("tested vertex rid is "+testVertex.getIdentity());
         TimeseriesEngine tsEngine = new TimeseriesEngine(database);
 

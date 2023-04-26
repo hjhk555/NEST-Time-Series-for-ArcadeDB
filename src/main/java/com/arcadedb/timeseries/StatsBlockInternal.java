@@ -186,7 +186,7 @@ public class StatsBlockInternal extends StatsBlock{
     public Statistics aggregativeQuery(long startTime, long endTime) throws TimeseriesException {
         // empty block
         if (childRID.size() == 0)
-            return null;
+            return Statistics.newEmptyStats(dataType);
 
         int lastChildIndex = childRID.size() - 1;
         Statistics resultStats;
