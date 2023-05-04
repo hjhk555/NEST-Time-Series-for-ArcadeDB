@@ -1,9 +1,13 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries;
 
 import com.arcadedb.database.Binary;
 import com.arcadedb.database.Document;
 import com.arcadedb.database.MutableDocument;
 import com.arcadedb.database.RID;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
 import java.util.ArrayList;
 
@@ -76,7 +80,7 @@ public class StatsBlockLeaf extends StatsBlock{
     }
 
     @Override
-    public boolean insert(DataPoint data) throws TimeseriesException {
+    public void insert(DataPoint data, boolean updateIfExist) throws TimeseriesException {
         if (data.timestamp < startTime)
             throw new TimeseriesException("target dataPoint should not be handled by this leaf");
 
@@ -88,7 +92,8 @@ public class StatsBlockLeaf extends StatsBlock{
         if (isLatest && dataList.size() >= maxdataSize)
             throw new TimeseriesException("latest leaf block is full to insert, which should not occur");
 
-        int pos;
+        boolean update = false;
+        int pos = -1;
         if (dataList.size() == 0 || dataList.get(0).timestamp > data.timestamp){
             // insert at head
             pos = 0;
@@ -105,15 +110,36 @@ public class StatsBlockLeaf extends StatsBlock{
                     low = mid + 1;
                 else if (midTime > data.timestamp)
                     high = mid - 1;
-                else
-                    return false;
+                else {
+                    if (!updateIfExist)
+                        throw new DuplicateTimestampException("datapoint already exist at timestamp "+dataList.get(mid).timestamp);
+                    // update
+                    update = true;
+                    pos = mid;
+                    break;
+                }
             }
-            pos = low;
+            if (!update)
+                pos = low;
         }
-        dataList.add(pos, data);
-        statistics.insert(data);
-        if (!isLatest)
-            parent.appendStats(data);
+
+        if (update){
+            DataPoint oldDP = dataList.get(pos);
+            // old and new have same value
+            if (oldDP.getValue().equals(data.getValue()))
+                return;
+            dataList.set(pos, data);
+            if (!statistics.update(oldDP, data)){
+                statistics = Statistics.countStats(dataType, dataList, true);
+            }
+            if (!isLatest)
+                parent.updateStats(oldDP, data);
+        }else {
+            dataList.add(pos, data);
+            statistics.insert(data);
+            if (!isLatest)
+                parent.appendStats(data);
+        }
 
         if (isLatest){
             // commit latest block if full
@@ -170,7 +196,6 @@ public class StatsBlockLeaf extends StatsBlock{
         }
 
         setAsDirty();
-        return true;
     }
 
     @Override
@@ -181,6 +206,11 @@ public class StatsBlockLeaf extends StatsBlock{
     @Override
     public void appendStats(Statistics stats) throws TimeseriesException {
         throw new TimeseriesException("leaf node should not append statistics");
+    }
+
+    @Override
+    public void updateStats(DataPoint oldDP, DataPoint newDP) throws TimeseriesException {
+        throw new TimeseriesException("leaf node should not update statistics");
     }
 
     @Override

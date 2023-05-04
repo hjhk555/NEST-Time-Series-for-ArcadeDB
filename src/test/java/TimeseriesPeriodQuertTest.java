@@ -1,8 +1,12 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import com.arcadedb.timeseries.*;
+import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
+import nju.hjh.arcadedb.timeseries.*;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.Random;
 
@@ -48,7 +52,7 @@ public class TimeseriesPeriodQuertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i));
+                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
             }
 
             tsEngine.commit();
@@ -84,7 +88,7 @@ public class TimeseriesPeriodQuertTest {
             }
 
         } catch (TimeseriesException e) {
-            e.printStackTrace();
+            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

@@ -1,4 +1,4 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries;
 
 public enum AggregateType {
     COUNT,

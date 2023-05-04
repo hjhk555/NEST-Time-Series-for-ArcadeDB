@@ -1,8 +1,13 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import com.arcadedb.timeseries.*;
+import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
+import nju.hjh.arcadedb.timeseries.*;
+import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
 
 import java.util.Random;
 
@@ -48,7 +53,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i));
+                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
             }
             tsEngine.commit();
 
@@ -67,8 +72,10 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                if (tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i))){
+                try{
+                    tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
                     Logger.logOnStderr("duplicate insert success but should not at datapoint "+i);
+                }catch (DuplicateTimestampException ignored){
                 }
             }
 
@@ -90,7 +97,7 @@ public class TimeseriesDuplicateOODInsertTest {
             }
 
         } catch (TimeseriesException e) {
-            e.printStackTrace();
+            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

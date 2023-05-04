@@ -2,8 +2,13 @@ import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.database.RID;
 import com.arcadedb.graph.Vertex;
-import com.arcadedb.timeseries.*;
+import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
+import nju.hjh.arcadedb.timeseries.*;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
 
 import java.util.Random;
 
@@ -25,20 +30,22 @@ public class TimeseriesPersistentTest {
         database.commit();
 
 
-        Vertex testVertex = database.lookupByRID(new RID(database, 1, 1), false).asVertex();
+        Vertex testVertex = database.lookupByRID(new RID(database, 1, 14), false).asVertex();
         Logger.logOnStdout("tested vertex rid is "+testVertex.getIdentity());
         TimeseriesEngine tsEngine = new TimeseriesEngine(database);
 
         tsEngine.begin();
         try {
-            int testSize = 123456789;
+            int testSize = 1000000;
 
             Random ran = new Random();
 
             for (int i=0; i<20; i++){
                 int queryStart = ran.nextInt(testSize);
                 int queryEnd = ran.nextInt(queryStart, testSize);
-                long ans = (long) (queryEnd + queryStart) * (queryEnd - queryStart + 1) / 2;
+                queryStart = 722516;
+                queryEnd = 913191;
+                long ans = (long) (queryEnd + queryStart) * (queryEnd - queryStart + 1);
 
                 long startTime = System.currentTimeMillis();
 
@@ -59,7 +66,7 @@ public class TimeseriesPersistentTest {
                 int cur = queryStart;
                 while ((dp = rs.next()) != null){
                     if (dp instanceof LongDataPoint longDP){
-                        if (longDP.value != cur)
+                        if (longDP.value != cur*2)
                             Logger.logOnStderr("result not match at %d", cur);
                     }
                     cur++;
@@ -74,7 +81,7 @@ public class TimeseriesPersistentTest {
             }
 
         } catch (TimeseriesException e) {
-            e.printStackTrace();
+            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             database.rollback();
             database.close();
             return;

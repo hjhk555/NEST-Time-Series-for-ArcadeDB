@@ -1,6 +1,9 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries.statistics;
 
 import com.arcadedb.database.Binary;
+import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
 
@@ -64,6 +67,13 @@ public abstract class Statistics {
 
     // insert single dataPoint into statistics
     public abstract void insert(DataPoint data) throws TimeseriesException;
+
+    /** try to update old dataPoint to new DataPoint without re-stats
+     * @param oldDP old data point
+     * @param newDP new data point
+     * @return true if success, false if re-stats needed
+     */
+    public abstract boolean update(DataPoint oldDP, DataPoint newDP) throws TimeseriesException;
     // insert list of dataPoints into statistics
     public abstract void insertDataList(List<DataPoint> dataList, boolean isTimeOrdered);
     // merge 2 statistics together

@@ -1,6 +1,9 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries.datapoint;
 
 import com.arcadedb.database.Binary;
+import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.statistics.Statistics;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 public abstract class DataPoint {
     public long timestamp;
@@ -22,4 +25,6 @@ public abstract class DataPoint {
     }
 
     public abstract void serialize(Binary binary);
+
+    public abstract Object getValue();
 }

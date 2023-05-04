@@ -1,6 +1,9 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries.statistics;
 
 import com.arcadedb.database.Binary;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
 
@@ -44,6 +47,38 @@ public class LongStatistics extends Statistics{
                 else if (lData.value < min)
                     min = lData.value;
             }
+        }else{
+            throw new TimeseriesException("LongStatistic can only handle LongDataPoint");
+        }
+    }
+
+    @Override
+    public boolean update(DataPoint oldDP, DataPoint newDP) throws TimeseriesException {
+        if (oldDP instanceof LongDataPoint oldLDP && newDP instanceof LongDataPoint newLDP){
+            if (oldDP.timestamp != newDP.timestamp)
+                throw new TimeseriesException("timestamp different when updating statistics");
+            if (oldLDP.value == max){
+                if (newLDP.value >= max){
+                    max = newLDP.value;
+                }else{
+                    return false;
+                }
+            }
+            if (oldLDP.value == min){
+                if (newLDP.value <= max){
+                    min = newLDP.value;
+                }else{
+                    return false;
+                }
+            }
+            sum += newLDP.value - oldLDP.value;
+            if (oldLDP.timestamp == firstTime){
+                firstValue = newLDP.value;
+            }
+            if (oldLDP.timestamp == lastTime){
+                lastValue = newLDP.value;
+            }
+            return true;
         }else{
             throw new TimeseriesException("LongStatistic can only handle LongDataPoint");
         }

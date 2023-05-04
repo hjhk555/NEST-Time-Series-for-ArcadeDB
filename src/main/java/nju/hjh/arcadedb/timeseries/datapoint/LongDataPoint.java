@@ -1,4 +1,4 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries.datapoint;
 
 import com.arcadedb.database.Binary;
 
@@ -14,5 +14,10 @@ public class LongDataPoint extends DataPoint{
     public void serialize(Binary binary) {
         binary.putLong(timestamp);
         binary.putLong(value);
+    }
+
+    @Override
+    public Object getValue() {
+        return value;
     }
 }

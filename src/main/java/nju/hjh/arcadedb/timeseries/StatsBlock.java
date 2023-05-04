@@ -1,8 +1,11 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries;
 
 import com.arcadedb.database.Binary;
 import com.arcadedb.database.Document;
 import com.arcadedb.database.RID;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
 import java.util.ArrayList;
 
@@ -126,18 +129,20 @@ public abstract class StatsBlock extends ArcadeDocument{
     public abstract void setParent(StatsBlock parent);
 
     /**
-     *
+     * inesrt data point into statsBlock
      * @param data the data point to insert
-     * @return if the data point is successfully inserted
      * @throws TimeseriesException
      */
-    public abstract boolean insert(DataPoint data) throws TimeseriesException;
+    public abstract void insert(DataPoint data, boolean updateIfExist) throws TimeseriesException;
 
     // append statistics of out-of-order data point
     public abstract void appendStats(DataPoint data) throws TimeseriesException;
 
     // append statistics of latest child block
     public abstract void appendStats(Statistics stats) throws TimeseriesException;
+
+    // update statistics of updated data point
+    public abstract void updateStats(DataPoint oldDP, DataPoint newDP) throws TimeseriesException;
 
     public abstract void addChild(StatsBlock child) throws TimeseriesException;
 

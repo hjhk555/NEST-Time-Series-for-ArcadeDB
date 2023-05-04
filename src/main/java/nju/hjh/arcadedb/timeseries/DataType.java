@@ -1,6 +1,10 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries;
 
 import com.arcadedb.database.Binary;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 public class DataType {
     public enum BaseType{

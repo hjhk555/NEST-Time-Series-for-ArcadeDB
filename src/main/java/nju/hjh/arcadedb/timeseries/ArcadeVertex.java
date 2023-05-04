@@ -1,8 +1,8 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries;
 
-import com.arcadedb.database.RID;
 import com.arcadedb.graph.MutableVertex;
 import com.arcadedb.graph.Vertex;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 public abstract class ArcadeVertex {
     // manager of this vertex

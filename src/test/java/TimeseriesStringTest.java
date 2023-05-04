@@ -1,8 +1,12 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import com.arcadedb.timeseries.*;
+import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
+import nju.hjh.arcadedb.timeseries.*;
+import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.StringStatistics;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -72,7 +76,7 @@ public class TimeseriesStringTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.STRING, 40), new StringDataPoint(i, strList.get(i)));
+                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.STRING, strLen), new StringDataPoint(i, strList.get(i)), false);
             }
 
             tsEngine.commit();
@@ -95,7 +99,7 @@ public class TimeseriesStringTest {
             }
 
         } catch (TimeseriesException e) {
-            e.printStackTrace();
+            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

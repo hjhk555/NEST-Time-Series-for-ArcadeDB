@@ -1,8 +1,10 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries;
 
 import com.arcadedb.database.Database;
 import com.arcadedb.database.RID;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -12,6 +14,8 @@ public class ArcadeDocumentManager {
     // initial size of cache
     public static final int INIT_CACHE_SIZE = 64;
 
+    // created instances of ArcadeDocumentManager
+    public static HashMap<Database, ArcadeDocumentManager> managerInstances = new HashMap<>();
     // arcadeDB database
     public Database database;
     // null RID
@@ -33,6 +37,14 @@ public class ArcadeDocumentManager {
     public ArcadeDocumentManager(Database database){
         this.database = database;
         nullRID = new RID(database, -1, -1);
+    }
+
+    public static ArcadeDocumentManager getInstance(Database database){
+        ArcadeDocumentManager manager = managerInstances.get(database);
+        if (manager != null) return manager;
+        manager = new ArcadeDocumentManager(database);
+        managerInstances.put(database, manager);
+        return manager;
     }
 
     public RID getRID(int bucketId, long offset){

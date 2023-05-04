@@ -1,8 +1,12 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import com.arcadedb.timeseries.*;
+import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
+import nju.hjh.arcadedb.timeseries.*;
+import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -47,7 +51,7 @@ public class TimeseriesOODTest {
                 if (ran.nextInt(100) < oodProb){
                     oodData.offer(i);
                 }else {
-                    tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i));
+                    tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
                     count++;
                 }
                 if (count == commitSize){
@@ -67,7 +71,7 @@ public class TimeseriesOODTest {
             long oodSize = oodData.size();
             while (!oodData.isEmpty()){
                 int ood = oodData.poll();
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(ood, ood));
+                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(ood, ood), false);
                 count++;
 
                 if (count == commitSize){
@@ -101,7 +105,7 @@ public class TimeseriesOODTest {
                 Logger.logOnStdout("query [%d, %d] get %s in %d ms with correctSum=%d, correct=%s", queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed, ans, sum == ans);
             }
         } catch (TimeseriesException e) {
-            e.printStackTrace();
+            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

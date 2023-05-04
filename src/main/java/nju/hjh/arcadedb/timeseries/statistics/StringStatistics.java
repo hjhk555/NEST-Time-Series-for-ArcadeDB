@@ -1,6 +1,10 @@
-package com.arcadedb.timeseries;
+package nju.hjh.arcadedb.timeseries.statistics;
 
 import com.arcadedb.database.Binary;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
+import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
 
@@ -32,6 +36,23 @@ public class StringStatistics extends Statistics{
                     lastValue = sData.value;
                 }
             }
+        }else{
+            throw new TimeseriesException("StringStatistics can only handle StringDataPoint");
+        }
+    }
+
+    @Override
+    public boolean update(DataPoint oldDP, DataPoint newDP) throws TimeseriesException {
+        if (oldDP instanceof StringDataPoint oldSDP && newDP instanceof StringDataPoint newSDP){
+            if (oldDP.timestamp != newDP.timestamp)
+                throw new TimeseriesException("timestamp different when updating statistics");
+            if (oldSDP.timestamp == firstTime){
+                firstValue = newSDP.value;
+            }
+            if (oldSDP.timestamp == lastTime){
+                lastValue = newSDP.value;
+            }
+            return true;
         }else{
             throw new TimeseriesException("StringStatistics can only handle StringDataPoint");
         }
