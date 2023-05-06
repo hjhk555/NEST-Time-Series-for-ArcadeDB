@@ -18,16 +18,6 @@ public abstract class Statistics {
         lastTime = Long.MIN_VALUE;
     }
 
-    public static int bytesToWriteUnsignedNumber(long number){
-        int bytes = 1;
-        number >>>= 7;
-        while (number != 0){
-            bytes++;
-            number >>>= 7;
-        }
-        return bytes;
-    }
-
     public static Statistics getStatisticsFromBinary(DataType type, Binary binary) throws TimeseriesException {
         Statistics stats = newEmptyStats(type);
         stats.deserialize(binary);
@@ -35,6 +25,7 @@ public abstract class Statistics {
     }
 
     public static Statistics newEmptyStats(DataType type) throws TimeseriesException {
+        if (!type.isFixed()) return new UnfixedStatistics();
         switch (type.baseType){
             case LONG -> {
                 return new LongStatistics();
@@ -49,18 +40,16 @@ public abstract class Statistics {
     }
 
     public static Statistics countStats(DataType type, List<DataPoint> dataList, boolean isTimeOrdered) throws TimeseriesException {
-        if (dataList.size() == 0)
-            return null;
-
         Statistics stats = newEmptyStats(type);
         stats.insertDataList(dataList, isTimeOrdered);
         return stats;
     }
 
-    public static int bytesToWrite(DataType type) throws TimeseriesException {
+    public static int maxBytesRequired(DataType type) throws TimeseriesException {
+        if (!type.isFixed()) return UnfixedStatistics.maxBytesRequired();
         return switch (type.baseType){
-            case LONG -> LongStatistics.bytesToWrite();
-            case STRING -> StringStatistics.bytesToWrite(type.param);
+            case LONG -> LongStatistics.maxBytesRequired();
+            case STRING -> StringStatistics.maxBytesRequired(type.param);
             default -> throw new TimeseriesException("invalid data type");
         };
     }

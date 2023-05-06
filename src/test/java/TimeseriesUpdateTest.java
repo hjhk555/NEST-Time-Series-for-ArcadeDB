@@ -53,7 +53,7 @@ public class TimeseriesUpdateTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), false);
             }
 
             tsEngine.commit();
@@ -76,7 +76,7 @@ public class TimeseriesUpdateTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, 2*i), true);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, 2*i), true);
             }
 
             tsEngine.commit();

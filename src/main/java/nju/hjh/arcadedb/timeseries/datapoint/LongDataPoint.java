@@ -17,6 +17,11 @@ public class LongDataPoint extends DataPoint{
     }
 
     @Override
+    public int realBytesRequired() {
+        return 16;
+    }
+
+    @Override
     public Object getValue() {
         return value;
     }

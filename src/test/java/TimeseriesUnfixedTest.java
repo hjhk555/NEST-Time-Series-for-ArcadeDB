@@ -3,14 +3,32 @@ import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
 import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
-import nju.hjh.arcadedb.timeseries.*;
-import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
-import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
+import nju.hjh.arcadedb.timeseries.DataPointSet;
+import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
+import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.StringStatistics;
+import nju.hjh.arcadedb.timeseries.statistics.UnfixedStatistics;
 
+import java.util.ArrayList;
 import java.util.Random;
 
-public class TimeseriesPeriodQuertTest {
+public class TimeseriesUnfixedTest {
+    /**
+     * from stack overflow
+     * <a href=https://stackoverflow.com/questions/2863852/how-to-generate-a-random-string-in-java>How to generate a random String in Java</a>
+     */
+    public static String generateString(Random rng, String characters, int length)
+    {
+        char[] text = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            text[i] = characters.charAt(rng.nextInt(characters.length()));
+        }
+        return new String(text);
+    }
+
     public static void main(String[] args) {
         DatabaseFactory dbf = new DatabaseFactory("./databases/tsTest");
 
@@ -37,8 +55,16 @@ public class TimeseriesPeriodQuertTest {
 
             final int testSize = 10000000;
             final int commitSize = 1000000;
+            final String charUsed = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            final int strLen = 10;
+
+            ArrayList<String> strList = new ArrayList<>();
 
             Random ran = new Random();
+
+            for (int i=0; i<testSize; i++){
+                strList.add(generateString(ran, charUsed, strLen));
+            }
 
             long periodStartTime = System.currentTimeMillis();
 
@@ -52,7 +78,7 @@ public class TimeseriesPeriodQuertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.STRING, new StringDataPoint(i, strList.get(i)), false);
             }
 
             tsEngine.commit();
@@ -65,26 +91,20 @@ public class TimeseriesPeriodQuertTest {
             for (int i=0; i<20; i++){
                 int queryStart = ran.nextInt(testSize);
                 int queryEnd = ran.nextInt(queryStart, testSize);
-                Logger.logOnStdout("querying [%d, %d]:", queryStart, queryEnd);
+
                 startTime = System.currentTimeMillis();
+                UnfixedStatistics statistics = (UnfixedStatistics) tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
 
-                DataPointSet rs = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
-                DataPoint dp;
-                int cur = queryStart;
-                while ((dp = rs.next()) != null){
-                    if (dp instanceof LongDataPoint longDP){
-                        if (longDP.value != cur)
-                            Logger.logOnStderr("result not match at %d", cur);
-                    }
-                    cur++;
-                }
+                DataPointSet firstRes = tsEngine.periodQuery(testVertex, "status", statistics.firstTime, statistics.firstTime);
+                String firstValue = (String) firstRes.next().getValue();
 
-                cur--;
-                if (cur != queryEnd)
-                    Logger.logOnStderr("result should end at %d but end at %d", queryEnd, cur);
+                DataPointSet lastRes = tsEngine.periodQuery(testVertex, "status", statistics.lastTime, statistics.lastTime);
+                String lastValue = (String) lastRes.next().getValue();
 
                 elapsed = System.currentTimeMillis() - startTime;
-                Logger.logOnStdout("query [%d, %d] finished in %d ms", queryStart, queryEnd, elapsed);
+                Logger.logOnStdout("query [%d, %d] get %s with firstValue=%s, lastValue=%s in %d ms with correct=%s",
+                        queryStart, queryEnd, statistics.toPrettyPrintString(), firstValue, lastValue, elapsed,
+                        (strList.get((int) statistics.firstTime).equals(firstValue) && strList.get((int) statistics.lastTime).equals(lastValue)));
             }
 
         } catch (TimeseriesException e) {

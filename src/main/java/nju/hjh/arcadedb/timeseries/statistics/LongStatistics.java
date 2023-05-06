@@ -86,6 +86,8 @@ public class LongStatistics extends Statistics{
 
     @Override
     public void insertDataList(List<DataPoint> dataList, boolean isTimeOrdered) {
+        if (dataList.size() == 0) return;
+
         count += dataList.size();
         if (isTimeOrdered) {
             LongDataPoint listFirst = (LongDataPoint) dataList.get(0);
@@ -117,7 +119,8 @@ public class LongStatistics extends Statistics{
                 if (dataPoint.timestamp < firstTime){
                     firstTime = dataPoint.timestamp;
                     firstValue = value;
-                }else if (dataPoint.timestamp > lastTime){
+                }
+                if (dataPoint.timestamp > lastTime){
                     lastTime = dataPoint.timestamp;
                     lastValue = value;
                 }
@@ -153,7 +156,7 @@ public class LongStatistics extends Statistics{
      * bytes needed to write LongStatistics
      * long(8B) * 8
      */
-    public static int bytesToWrite(){
+    public static int maxBytesRequired(){
         return 64;
     }
 

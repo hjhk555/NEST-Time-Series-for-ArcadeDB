@@ -34,7 +34,7 @@ public class StatsBlockRoot extends StatsBlock{
 
     @Override
     public MutableDocument serializeDocument() throws TimeseriesException {
-        int statSize = HEADER_WITHOUT_STATS_AND_CHILD + Statistics.bytesToWrite(dataType) + degree * CHILD_SIZE;
+        int statSize = HEADER_WITHOUT_STATS_AND_CHILD + Statistics.maxBytesRequired(dataType) + degree * CHILD_SIZE;
 
         MutableDocument modifiedDocument = document.modify();
         Binary binary = new Binary(statSize, false);

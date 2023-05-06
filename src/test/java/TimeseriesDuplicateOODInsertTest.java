@@ -53,7 +53,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), false);
             }
             tsEngine.commit();
 

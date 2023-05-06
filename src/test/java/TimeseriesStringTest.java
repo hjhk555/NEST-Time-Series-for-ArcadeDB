@@ -93,8 +93,8 @@ public class TimeseriesStringTest {
                 startTime = System.currentTimeMillis();
                 StringStatistics statistics = (StringStatistics) tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
                 elapsed = System.currentTimeMillis() - startTime;
-                Logger.logOnStdout("query [%d, %d] get statistics{\n\tcount=%d\n\tfirstTime=%d\n\tfirstValue=%s\n\tlastTime=%d\n\tlastValue=%s\n} in %d ms with correct=%s",
-                        queryStart, queryEnd, statistics.count, statistics.firstTime, statistics.firstValue, statistics.lastTime, statistics.lastValue, elapsed,
+                Logger.logOnStdout("query [%d, %d] get %s in %d ms with correct=%s",
+                        queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed,
                         (strList.get((int) statistics.firstTime).equals(statistics.firstValue) && strList.get((int) statistics.lastTime).equals(statistics.lastValue)));
             }
 

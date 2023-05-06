@@ -1,8 +1,8 @@
 package nju.hjh.arcadedb.timeseries.statistics;
 
 import com.arcadedb.database.Binary;
+import nju.hjh.arcadedb.timeseries.MathUtils;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
-import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
@@ -60,6 +60,8 @@ public class StringStatistics extends Statistics{
 
     @Override
     public void insertDataList(List<DataPoint> dataList, boolean isTimeOrdered) {
+        if (dataList.size() == 0) return;
+
         count += dataList.size();
         if (isTimeOrdered) {
             StringDataPoint listFirst = (StringDataPoint) dataList.get(0);
@@ -78,7 +80,8 @@ public class StringStatistics extends Statistics{
                 if (dataPoint.timestamp < firstTime){
                     firstTime = dataPoint.timestamp;
                     firstValue = value;
-                }else if (dataPoint.timestamp > lastTime){
+                }
+                if (dataPoint.timestamp > lastTime){
                     lastTime = dataPoint.timestamp;
                     lastValue = value;
                 }
@@ -110,8 +113,8 @@ public class StringStatistics extends Statistics{
      * long(8B) * 3 + String(length) * 2
      * @param length max length of string
      */
-    public static int bytesToWrite(int length){
-        int bytesToWriteString = bytesToWriteUnsignedNumber(length) + length;
+    public static int maxBytesRequired(int length){
+        int bytesToWriteString = MathUtils.bytesToWriteUnsignedNumber(length) + length;
         return 24 + 2 * bytesToWriteString;
     }
 

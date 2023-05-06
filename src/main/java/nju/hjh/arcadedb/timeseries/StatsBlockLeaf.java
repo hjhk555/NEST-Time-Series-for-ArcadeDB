@@ -23,6 +23,8 @@ public class StatsBlockLeaf extends StatsBlock{
     public ArrayList<DataPoint> dataList;
     public RID prevRID;
     public RID succRID;
+    // for unfixed data type
+    public int dataBytesUseed;
 
     public StatsBlockLeaf(ArcadeDocumentManager manager, Document document, String measurement, int degree, DataType dataType, long startTime, boolean isLatest) throws TimeseriesException {
         super(manager, document, measurement, degree, dataType, startTime, isLatest);
@@ -35,12 +37,17 @@ public class StatsBlockLeaf extends StatsBlock{
             Binary binary = new Binary(document.getBinary("data"));
             for (int i = 0; i < statistics.count; i++)
                 dataList.add(DataPoint.getDataPointFromBinary(dataType, binary));
+            if (!dataType.isFixed()){
+                dataBytesUseed = 0;
+                for (DataPoint dataPoint : dataList)
+                    dataBytesUseed += dataPoint.realBytesRequired();
+            }
         }
     }
 
     @Override
     public MutableDocument serializeDocument() throws TimeseriesException {
-        int statSize = HEADER_WITHOUT_STATS + Statistics.bytesToWrite(dataType);
+        int statSize = HEADER_WITHOUT_STATS + Statistics.maxBytesRequired(dataType);
 
         MutableDocument mutableDocument = document.modify();
         // put stat
@@ -81,13 +88,21 @@ public class StatsBlockLeaf extends StatsBlock{
 
     @Override
     public void insert(DataPoint data, boolean updateIfExist) throws TimeseriesException {
+        if (dataType.isFixed())
+            insertFixed(data, updateIfExist);
+        else{
+            insertUnfixed(data, updateIfExist);
+        }
+    }
+
+    public void insertFixed(DataPoint data, boolean updateIfExist) throws TimeseriesException {
         if (data.timestamp < startTime)
             throw new TimeseriesException("target dataPoint should not be handled by this leaf");
 
         if (dataList == null)
             loadData();
 
-        int maxdataSize = MAX_DATA_BLOCK_SIZE / DataPoint.bytesToWrite(dataType);
+        int maxdataSize = MAX_DATA_BLOCK_SIZE / DataPoint.maxBytesRequired(dataType);
 
         if (isLatest && dataList.size() >= maxdataSize)
             throw new TimeseriesException("latest leaf block is full to insert, which should not occur");
@@ -194,7 +209,127 @@ public class StatsBlockLeaf extends StatsBlock{
                 parent.addChild(newLeaf);
             }
         }
+        setAsDirty();
+    }
 
+    private void insertUnfixed(DataPoint data, boolean updateIfExist) throws TimeseriesException {
+        if (data.timestamp < startTime)
+            throw new TimeseriesException("target dataPoint should not be handled by this leaf");
+
+        if (dataList == null)
+            loadData();
+
+        boolean update = false;
+        int pos = -1;
+        if (dataList.size() == 0 || dataList.get(0).timestamp > data.timestamp){
+            // insert at head
+            pos = 0;
+        }else if (dataList.get(dataList.size()-1).timestamp < data.timestamp){
+            // insert at tail
+            pos = dataList.size();
+        }else {
+            // binary search
+            int low = 0, high = dataList.size() - 1;
+            while (low <= high) {
+                int mid = (low + high) >>> 1;
+                long midTime = dataList.get(mid).timestamp;
+                if (midTime < data.timestamp)
+                    low = mid + 1;
+                else if (midTime > data.timestamp)
+                    high = mid - 1;
+                else {
+                    if (!updateIfExist)
+                        throw new DuplicateTimestampException("datapoint already exist at timestamp "+dataList.get(mid).timestamp);
+                    // update
+                    update = true;
+                    pos = mid;
+                    break;
+                }
+            }
+            if (!update)
+                pos = low;
+        }
+
+        if (update){
+            DataPoint oldDP = dataList.get(pos);
+            // old and new have same value
+            if (oldDP.getValue().equals(data.getValue()))
+                return;
+            dataList.set(pos, data);
+            dataBytesUseed += data.realBytesRequired() - oldDP.realBytesRequired();
+            if (!statistics.update(oldDP, data)){
+                statistics = Statistics.countStats(dataType, dataList, true);
+            }
+            if (!isLatest)
+                parent.updateStats(oldDP, data);
+        }else {
+            dataList.add(pos, data);
+            dataBytesUseed += data.realBytesRequired();
+            statistics.insert(data);
+            if (!isLatest)
+                parent.appendStats(data);
+        }
+
+        // check if require split, to achieve split, each data point should use at most MAX_DATA_BLOCK_SIZE/2 bytes
+        if (dataBytesUseed > MAX_DATA_BLOCK_SIZE){
+            // locate split size
+            int splitedBytes, splitedSize;
+            if (isLatest){
+                // fill this block as much as possible
+                splitedBytes = dataBytesUseed;
+                splitedSize = dataList.size();
+                while (splitedBytes > MAX_DATA_BLOCK_SIZE){
+                    splitedSize--;
+                    splitedBytes -= dataList.get(splitedSize).realBytesRequired();
+                }
+            }else{
+                // try to split evenly.
+                splitedBytes = 0;
+                splitedSize = 0;
+
+                int nextBytesUsed = dataList.get(splitedSize).realBytesRequired();
+                while (splitedBytes + nextBytesUsed <= dataBytesUseed/2){
+                    splitedBytes += nextBytesUsed;
+                    splitedSize++;
+                    nextBytesUsed = dataList.get(splitedSize).realBytesRequired();
+                }
+            }
+
+            // create latter half leaf node
+            DataPoint LatterfirstDataPoint = dataList.get(splitedSize);
+            StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+measurement, document1 -> {
+                return new StatsBlockLeaf(manager, document1, measurement, degree, dataType, LatterfirstDataPoint.timestamp, isLatest);
+            });
+            newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, dataList.size()));
+            newLeaf.dataBytesUseed = this.dataBytesUseed - splitedBytes;
+            newLeaf.statistics = Statistics.countStats(dataType, newLeaf.dataList, true);
+
+            // re-calc stats
+            this.dataBytesUseed = splitedBytes;
+            this.dataList = new ArrayList<>(this.dataList.subList(0, splitedSize));
+            statistics = Statistics.countStats(dataType, dataList, true);
+
+            // link leaves
+            if (isLatest) {
+                // commit statistics if is latest
+                parent.appendStats(this.statistics);
+
+                newLeaf.prevRID = this.document.getIdentity();
+                newLeaf.succRID = manager.nullRID;
+                newLeaf.save();
+                this.succRID = newLeaf.document.getIdentity();
+            }else{
+                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, null, measurement, degree, dataType, -1, false);
+                newLeaf.succRID = this.succRID;
+                newLeaf.prevRID = this.document.getIdentity();
+                newLeaf.save();
+                this.succRID = newLeaf.document.getIdentity();
+                succLeaf.prevRID = newLeaf.document.getIdentity();
+                succLeaf.setAsDirty();
+            }
+
+            parent.addChild(newLeaf);
+        }
         setAsDirty();
     }
 

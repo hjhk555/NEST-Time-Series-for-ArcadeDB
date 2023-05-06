@@ -7,6 +7,19 @@ import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 public class DataType {
+    public static final DataType LONG;
+    public static final DataType STRING;
+
+    static {
+        try {
+            LONG = new DataType(BaseType.LONG, 0);
+            STRING = new DataType(BaseType.STRING, 0);
+        } catch (TimeseriesException e) {
+            // this should not happen
+            throw new RuntimeException(e);
+        }
+    }
+
     public enum BaseType{
         LONG((byte) 0, "LONG"),
         STRING((byte) 1, "STRING");
@@ -20,19 +33,10 @@ public class DataType {
         }
     }
 
+    // the base-type of DataType
     public BaseType baseType;
+    // param required by some of the base types
     public int param;
-
-    public void checkValid() throws TimeseriesException {
-        switch (baseType){
-            case STRING -> {
-                if (param <= 0)
-                    throw new TimeseriesException("length of string should be positive");
-                if (param >= 1000)
-                    throw new TimeseriesException("length of string should less than 1000");
-            }
-        }
-    }
 
     public DataType(BaseType baseType, int param) throws TimeseriesException {
         this.baseType = baseType;
@@ -45,6 +49,31 @@ public class DataType {
         binary.putInt(param);
     }
 
+    /**
+     * check if this data type is valid
+     * @throws TimeseriesException if not valid
+     */
+    public void checkValid() throws TimeseriesException {
+        switch (baseType){
+            case STRING -> {
+                if (param < 0)
+                    throw new TimeseriesException("length of string should be 0 or positive");
+                if (param > 2000)
+                    throw new TimeseriesException("length of string should not exceed 2000");
+            }
+        }
+    }
+
+    /**
+     * @return true if this data type has fixed size
+     */
+    public boolean isFixed(){
+        if (baseType == BaseType.STRING && param == 0)
+            // unlimited string
+            return false;
+        return true;
+    }
+
     public static DataType resolveFromBinary(Binary binary) throws TimeseriesException {
         byte bBaseType = binary.getByte();
         return switch (bBaseType) {
@@ -54,6 +83,12 @@ public class DataType {
         };
     }
 
+    /**
+     * check and try to convert given data point into one with this data type
+     * @param dataPoint given data point
+     * @return converted data point
+     * @throws TimeseriesException if failed to convert
+     */
     public DataPoint checkAndConvertDataPoint(DataPoint dataPoint) throws TimeseriesException {
         switch (baseType){
             case LONG -> {
@@ -64,13 +99,19 @@ public class DataType {
                 }
             }
             case STRING -> {
-                if (dataPoint instanceof StringDataPoint strDP){
-                    if (strDP.value.length() > param)
-                        throw new TimeseriesException(String.format("string lwngth(%d) exceeded limit(%d)", strDP.value.length(), param));
-                    return dataPoint;
-                }else{
-                    throw new TimeseriesException("unmatched data and type(String)");
+                StringDataPoint strDP;
+                if (dataPoint instanceof StringDataPoint) {
+                    strDP = (StringDataPoint) dataPoint;
+                } else {
+                    strDP = new StringDataPoint(dataPoint.timestamp, dataPoint.getValue().toString());
                 }
+
+                int strLen = strDP.value.length();
+                if (strLen > 4000)
+                    throw new TimeseriesException(String.format("string length(%d) exceeded hard limit(4000)", strLen));
+                if (param > 0 && strLen > param)
+                    throw new TimeseriesException(String.format("string lwngth(%d) exceeded limit(%d)", strLen, param));
+                return dataPoint;
             }
             default -> {
                 throw new TimeseriesException("invalid data type");
