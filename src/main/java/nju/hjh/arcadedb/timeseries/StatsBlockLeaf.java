@@ -286,12 +286,18 @@ public class StatsBlockLeaf extends StatsBlock{
                 // try to split evenly.
                 splitedBytes = 0;
                 splitedSize = 0;
+                int halfBytes = dataBytesUseed / 2;
 
-                int nextBytesUsed = dataList.get(splitedSize).realBytesRequired();
-                while (splitedBytes + nextBytesUsed <= dataBytesUseed/2){
-                    splitedBytes += nextBytesUsed;
+                while (splitedBytes < halfBytes){
+                    splitedBytes += dataList.get(splitedSize).realBytesRequired();
                     splitedSize++;
-                    nextBytesUsed = dataList.get(splitedSize).realBytesRequired();
+                }
+
+                // one step back if better
+                int stepBackBytes = splitedBytes - dataList.get(splitedSize - 1).realBytesRequired();
+                if (splitedBytes > MAX_DATA_BLOCK_SIZE || splitedBytes - halfBytes > halfBytes - stepBackBytes){
+                    splitedBytes = stepBackBytes;
+                    splitedSize--;
                 }
             }
 
