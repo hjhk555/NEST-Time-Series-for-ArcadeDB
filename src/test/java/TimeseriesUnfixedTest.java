@@ -69,16 +69,17 @@ public class TimeseriesUnfixedTest {
             long periodStartTime = System.currentTimeMillis();
 
             for (int i=0; i<testSize; i++){
+                int index = ran.nextInt(testSize);
                 if (i > 0 && i % commitSize == 0) {
                     tsEngine.commit();
 
                     long periodElapsed = System.currentTimeMillis() - periodStartTime;
                     periodStartTime = System.currentTimeMillis();
-                    Logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
+                    Logger.logOnStdout("inserted %d datapoints using %d ms", commitSize, periodElapsed);
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.STRING, new StringDataPoint(i, strList.get(i)), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.STRING, new StringDataPoint(index, strList.get(index)), true);
             }
 
             tsEngine.commit();
