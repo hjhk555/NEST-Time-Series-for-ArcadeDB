@@ -13,6 +13,8 @@ import java.util.Random;
 
 public class TimeseriesDuplicateOODInsertTest {
     public static void main(String[] args) {
+        Logger logger = Logger.getPureLogger("DUPOODInsert");
+        
         DatabaseFactory dbf = new DatabaseFactory("./databases/tsTest");
 
         Database database;
@@ -29,7 +31,7 @@ public class TimeseriesDuplicateOODInsertTest {
         Vertex testVertex = database.newVertex("test").save();
         database.commit();
 
-        Logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
+        logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
         TimeseriesEngine tsEngine = new TimeseriesEngine(database);
 
         tsEngine.begin();
@@ -49,7 +51,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     long periodElapsed = System.currentTimeMillis() - periodStartTime;
                     periodStartTime = System.currentTimeMillis();
-                    Logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
+                    logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
 
                     tsEngine.begin();
                 }
@@ -58,23 +60,23 @@ public class TimeseriesDuplicateOODInsertTest {
             tsEngine.commit();
 
             long elapsed = System.currentTimeMillis() - startTime;
-            Logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
+            logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
 
             tsEngine.begin();
-            Logger.logOnStdout("start duplicate out-of-order insert");
+            logger.logOnStdout("start duplicate out-of-order insert");
             for (int i=0; i<testSize; i++){
                 if (i > 0 && i % commitSize == 0) {
                     tsEngine.commit();
 
                     long periodElapsed = System.currentTimeMillis() - periodStartTime;
                     periodStartTime = System.currentTimeMillis();
-                    Logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
+                    logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
 
                     tsEngine.begin();
                 }
                 try{
                     tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
-                    Logger.logOnStderr("duplicate insert success but should not at datapoint "+i);
+                    logger.logOnStderr("duplicate insert success but should not at datapoint "+i);
                 }catch (DuplicateTimestampException ignored){
                 }
             }
@@ -93,11 +95,11 @@ public class TimeseriesDuplicateOODInsertTest {
                 LongStatistics statistics = (LongStatistics) tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
                 long sum = statistics.sum;
                 elapsed = System.currentTimeMillis() - startTime;
-                Logger.logOnStdout("query [%d, %d] get %s in %d ms with correctSum=%d, correct=%s", queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed, ans, sum == ans);
+                logger.logOnStdout("query [%d, %d] get %s in %d ms with correctSum=%d, correct=%s", queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed, ans, sum == ans);
             }
 
         } catch (TimeseriesException e) {
-            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
+            logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

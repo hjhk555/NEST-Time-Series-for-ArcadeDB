@@ -7,7 +7,7 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
 
-public class LongStatistics extends Statistics{
+public class LongStatistics extends NumericStatistics{
     public long firstValue;
     public long lastValue;
     public long sum;
@@ -202,5 +202,30 @@ public class LongStatistics extends Statistics{
     public String toPrettyPrintString() {
         return String.format("LongStatistics{\n\tcount=%d\n\tfirstTime=%d\n\tfirstValue=%d\n\tlastTime=%d\n\tlastValue=%d\n\tsum=%d\n\tmax=%d\n\tmin=%d\n}",
                 count, firstTime, firstValue, lastTime, lastValue, sum, max, min);
+    }
+
+    @Override
+    public Object getFirstValue() {
+        return firstValue;
+    }
+
+    @Override
+    public Object getLastValue() {
+        return lastValue;
+    }
+
+    @Override
+    public Number getSum() {
+        return sum;
+    }
+
+    @Override
+    public Number getMaxValue() {
+        return max;
+    }
+
+    @Override
+    public Number getMinValue() {
+        return min;
     }
 }

@@ -28,6 +28,7 @@ public class TimeseriesStringTest {
     }
 
     public static void main(String[] args) {
+        Logger logger = Logger.getPureLogger("TSString");
         DatabaseFactory dbf = new DatabaseFactory("./databases/tsTest");
 
         Database database;
@@ -44,7 +45,7 @@ public class TimeseriesStringTest {
         Vertex testVertex = database.newVertex("test").save();
         database.commit();
 
-        Logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
+        logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
         TimeseriesEngine tsEngine = new TimeseriesEngine(database);
 
         tsEngine.begin();
@@ -72,7 +73,7 @@ public class TimeseriesStringTest {
 
                     long periodElapsed = System.currentTimeMillis() - periodStartTime;
                     periodStartTime = System.currentTimeMillis();
-                    Logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
+                    logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
 
                     tsEngine.begin();
                 }
@@ -82,7 +83,7 @@ public class TimeseriesStringTest {
             tsEngine.commit();
 
             long elapsed = System.currentTimeMillis() - startTime;
-            Logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
+            logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
 
             tsEngine.begin();
 
@@ -93,13 +94,13 @@ public class TimeseriesStringTest {
                 startTime = System.currentTimeMillis();
                 StringStatistics statistics = (StringStatistics) tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
                 elapsed = System.currentTimeMillis() - startTime;
-                Logger.logOnStdout("query [%d, %d] get %s in %d ms with correct=%s",
+                logger.logOnStdout("query [%d, %d] get %s in %d ms with correct=%s",
                         queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed,
                         (strList.get((int) statistics.firstTime).equals(statistics.firstValue) && strList.get((int) statistics.lastTime).equals(statistics.lastValue)));
             }
 
         } catch (TimeseriesException e) {
-            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
+            logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

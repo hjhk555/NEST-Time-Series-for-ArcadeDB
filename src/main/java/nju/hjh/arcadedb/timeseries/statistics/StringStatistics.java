@@ -8,7 +8,7 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
 
-public class StringStatistics extends Statistics{
+public class StringStatistics extends FixedStatistics{
     public String firstValue;
     public String lastValue;
 
@@ -151,5 +151,15 @@ public class StringStatistics extends Statistics{
     public String toPrettyPrintString() {
         return String.format("StringStatistics{\n\tcount=%d\n\tfirstTime=%d\n\tfirstValue=%s\n\tlastTime=%d\n\tlastValue=%s\n}",
                 count, firstTime, firstValue, lastTime, lastValue);
+    }
+
+    @Override
+    public Object getFirstValue() {
+        return firstValue;
+    }
+
+    @Override
+    public Object getLastValue() {
+        return lastValue;
     }
 }

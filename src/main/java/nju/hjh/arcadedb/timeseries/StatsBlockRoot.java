@@ -22,9 +22,9 @@ public class StatsBlockRoot extends StatsBlock{
     public ArrayList<RID> childRID = new ArrayList<>();
     public ArrayList<Long> childStartTime = new ArrayList<>();
 
-    public StatsBlockRoot(ArcadeDocumentManager manager, Document document, String measurement, int degree, DataType dataType) {
+    public StatsBlockRoot(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) {
         // root is always latest and start at 0
-        super(manager, document, measurement, degree, dataType, 0, true);
+        super(manager, document, metric, degree, dataType, 0, true);
     }
 
     @Override
@@ -88,7 +88,7 @@ public class StatsBlockRoot extends StatsBlock{
         }
 
         boolean isInsertLatest = pos == childRID.size() - 1;
-        getStatsBlockNonRoot(manager, childRID.get(pos), this, measurement, degree, dataType, childStartTime.get(pos), isInsertLatest).insert(data, updateIfExist);
+        getStatsBlockNonRoot(manager, childRID.get(pos), this, metric, degree, dataType, childStartTime.get(pos), isInsertLatest).insert(data, updateIfExist);
     }
 
     @Override
@@ -110,7 +110,7 @@ public class StatsBlockRoot extends StatsBlock{
             this.statistics = Statistics.newEmptyStats(dataType);
             int childSize = childRID.size()-1;
             for (int i=0; i<childSize; i++){
-                this.statistics.merge(getStatsBlockNonRoot(manager, childRID.get(i), this, measurement, degree, dataType, childStartTime.get(i), false).statistics);
+                this.statistics.merge(getStatsBlockNonRoot(manager, childRID.get(i), this, metric, degree, dataType, childStartTime.get(i), false).statistics);
             }
         }
         setAsDirty();
@@ -145,8 +145,8 @@ public class StatsBlockRoot extends StatsBlock{
         childStartTime.add(pos, child.startTime);
 
         if (childRID.size() == degree){
-            StatsBlockInternal newInternal = (StatsBlockInternal) manager.newArcadeDocument(PREFIX_STATSBLOCK+measurement, document1 -> {
-                return new StatsBlockInternal(manager, document1, measurement, degree, dataType, 0, true);
+            StatsBlockInternal newInternal = (StatsBlockInternal) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
+                return new StatsBlockInternal(manager, document1, metric, degree, dataType, 0, true);
             });
             newInternal.childRID = this.childRID;
             newInternal.childStartTime = this.childStartTime;
@@ -174,7 +174,7 @@ public class StatsBlockRoot extends StatsBlock{
         Statistics resultStats;
         if (endTime >= childStartTime.get(lastChildIndex)) {
             // calc latest child's statistics as it is out of current statistics
-            resultStats = getStatsBlockNonRoot(manager, childRID.get(lastChildIndex), this, measurement, degree, dataType, childStartTime.get(lastChildIndex), true)
+            resultStats = getStatsBlockNonRoot(manager, childRID.get(lastChildIndex), this, metric, degree, dataType, childStartTime.get(lastChildIndex), true)
                     .aggregativeQuery(startTime, endTime);
             lastChildIndex--;
         }else{
@@ -217,7 +217,7 @@ public class StatsBlockRoot extends StatsBlock{
 
         // merge non-latest block's statistics
         while (pos <= lastChildIndex && childStartTime.get(pos) <= endTime){
-            resultStats.merge(getStatsBlockNonRoot(manager, childRID.get(pos), this, measurement, degree, dataType, childStartTime.get(pos), false).aggregativeQuery(startTime, endTime));
+            resultStats.merge(getStatsBlockNonRoot(manager, childRID.get(pos), this, metric, degree, dataType, childStartTime.get(pos), false).aggregativeQuery(startTime, endTime));
             pos++;
         }
         return resultStats;
@@ -249,6 +249,6 @@ public class StatsBlockRoot extends StatsBlock{
                 pos = high;
         }
 
-        return getStatsBlockNonRoot(manager, childRID.get(pos), this, measurement, degree, dataType, childStartTime.get(pos), pos == childRID.size()-1).periodQuery(startTime, endTime);
+        return getStatsBlockNonRoot(manager, childRID.get(pos), this, metric, degree, dataType, childStartTime.get(pos), pos == childRID.size()-1).periodQuery(startTime, endTime);
     }
 }

@@ -26,8 +26,8 @@ public class StatsBlockLeaf extends StatsBlock{
     // for unfixed data type
     public int dataBytesUseed;
 
-    public StatsBlockLeaf(ArcadeDocumentManager manager, Document document, String measurement, int degree, DataType dataType, long startTime, boolean isLatest) throws TimeseriesException {
-        super(manager, document, measurement, degree, dataType, startTime, isLatest);
+    public StatsBlockLeaf(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType, long startTime, boolean isLatest) throws TimeseriesException {
+        super(manager, document, metric, degree, dataType, startTime, isLatest);
         statistics = Statistics.newEmptyStats(dataType);
     }
 
@@ -127,7 +127,7 @@ public class StatsBlockLeaf extends StatsBlock{
                     high = mid - 1;
                 else {
                     if (!updateIfExist)
-                        throw new DuplicateTimestampException("datapoint already exist at timestamp "+dataList.get(mid).timestamp);
+                        throw new DuplicateTimestampException("datapoint already exist in metric '"+ metric +"' at timestamp "+dataList.get(mid).timestamp);
                     // update
                     update = true;
                     pos = mid;
@@ -162,8 +162,8 @@ public class StatsBlockLeaf extends StatsBlock{
                 parent.appendStats(this.statistics);
 
                 DataPoint lastDataPoint = dataList.get(maxdataSize - 1);
-                StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+measurement, document1 -> {
-                    return new StatsBlockLeaf(manager, document1, measurement, degree, dataType, lastDataPoint.timestamp+1, true);
+                StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
+                    return new StatsBlockLeaf(manager, document1, metric, degree, dataType, lastDataPoint.timestamp+1, true);
                 });
                 this.isLatest = false;
 
@@ -185,8 +185,8 @@ public class StatsBlockLeaf extends StatsBlock{
                 int splitedSize = totalSize / 2;
                 DataPoint LatterfirstDataPoint = dataList.get(splitedSize);
 
-                StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+measurement, document1 -> {
-                    return new StatsBlockLeaf(manager, document1, measurement, degree, dataType, LatterfirstDataPoint.timestamp, false);
+                StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
+                    return new StatsBlockLeaf(manager, document1, metric, degree, dataType, LatterfirstDataPoint.timestamp, false);
                 });
                 newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, totalSize));
 
@@ -198,7 +198,7 @@ public class StatsBlockLeaf extends StatsBlock{
                 this.statistics = Statistics.countStats(dataType, this.dataList, true);
 
                 // link leaves
-                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, null, measurement, degree, dataType, -1, false);
+                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, null, metric, degree, dataType, -1, false);
                 newLeaf.succRID = this.succRID;
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.save();
@@ -239,7 +239,7 @@ public class StatsBlockLeaf extends StatsBlock{
                     high = mid - 1;
                 else {
                     if (!updateIfExist)
-                        throw new DuplicateTimestampException("datapoint already exist at timestamp "+dataList.get(mid).timestamp);
+                        throw new DuplicateTimestampException("datapoint already exist in metric '"+ metric +"' at timestamp "+dataList.get(mid).timestamp);
                     // update
                     update = true;
                     pos = mid;
@@ -303,8 +303,8 @@ public class StatsBlockLeaf extends StatsBlock{
 
             // create latter half leaf node
             DataPoint LatterfirstDataPoint = dataList.get(splitedSize);
-            StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+measurement, document1 -> {
-                return new StatsBlockLeaf(manager, document1, measurement, degree, dataType, LatterfirstDataPoint.timestamp, isLatest);
+            StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
+                return new StatsBlockLeaf(manager, document1, metric, degree, dataType, LatterfirstDataPoint.timestamp, isLatest);
             });
             newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, dataList.size()));
             newLeaf.dataBytesUseed = this.dataBytesUseed - splitedBytes;
@@ -325,7 +325,7 @@ public class StatsBlockLeaf extends StatsBlock{
                 newLeaf.save();
                 this.succRID = newLeaf.document.getIdentity();
             }else{
-                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, null, measurement, degree, dataType, -1, false);
+                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, null, metric, degree, dataType, -1, false);
                 newLeaf.succRID = this.succRID;
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.save();
@@ -429,6 +429,6 @@ public class StatsBlockLeaf extends StatsBlock{
         if (startTime < this.startTime)
             throw new TimeseriesException("period query over-headed");
 
-        return new DataPointSet(startTime, endTime, this.document.getIdentity(), manager, measurement, degree, dataType);
+        return new DataPointSet(startTime, endTime, this.document.getIdentity(), manager, metric, degree, dataType);
     }
 }

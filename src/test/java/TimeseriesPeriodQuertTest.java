@@ -12,6 +12,7 @@ import java.util.Random;
 
 public class TimeseriesPeriodQuertTest {
     public static void main(String[] args) {
+        Logger logger = Logger.getPureLogger("TSPeriod");
         DatabaseFactory dbf = new DatabaseFactory("./databases/tsTest");
 
         Database database;
@@ -28,7 +29,7 @@ public class TimeseriesPeriodQuertTest {
         Vertex testVertex = database.newVertex("test").save();
         database.commit();
 
-        Logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
+        logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
         TimeseriesEngine tsEngine = new TimeseriesEngine(database);
 
         tsEngine.begin();
@@ -48,7 +49,7 @@ public class TimeseriesPeriodQuertTest {
 
                     long periodElapsed = System.currentTimeMillis() - periodStartTime;
                     periodStartTime = System.currentTimeMillis();
-                    Logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
+                    logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
 
                     tsEngine.begin();
                 }
@@ -58,14 +59,14 @@ public class TimeseriesPeriodQuertTest {
             tsEngine.commit();
 
             long elapsed = System.currentTimeMillis() - startTime;
-            Logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
+            logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
 
             tsEngine.begin();
 
             for (int i=0; i<20; i++){
                 int queryStart = ran.nextInt(testSize);
                 int queryEnd = ran.nextInt(queryStart, testSize);
-                Logger.logOnStdout("querying [%d, %d]:", queryStart, queryEnd);
+                logger.logOnStdout("querying [%d, %d]:", queryStart, queryEnd);
                 startTime = System.currentTimeMillis();
 
                 DataPointSet rs = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
@@ -74,21 +75,21 @@ public class TimeseriesPeriodQuertTest {
                 while ((dp = rs.next()) != null){
                     if (dp instanceof LongDataPoint longDP){
                         if (longDP.value != cur)
-                            Logger.logOnStderr("result not match at %d", cur);
+                            logger.logOnStderr("result not match at %d", cur);
                     }
                     cur++;
                 }
 
                 cur--;
                 if (cur != queryEnd)
-                    Logger.logOnStderr("result should end at %d but end at %d", queryEnd, cur);
+                    logger.logOnStderr("result should end at %d but end at %d", queryEnd, cur);
 
                 elapsed = System.currentTimeMillis() - startTime;
-                Logger.logOnStdout("query [%d, %d] finished in %d ms", queryStart, queryEnd, elapsed);
+                logger.logOnStdout("query [%d, %d] finished in %d ms", queryStart, queryEnd, elapsed);
             }
 
         } catch (TimeseriesException e) {
-            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
+            logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

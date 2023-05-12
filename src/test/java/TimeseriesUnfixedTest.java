@@ -8,7 +8,6 @@ import nju.hjh.arcadedb.timeseries.DataType;
 import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
-import nju.hjh.arcadedb.timeseries.statistics.StringStatistics;
 import nju.hjh.arcadedb.timeseries.statistics.UnfixedStatistics;
 
 import java.util.ArrayList;
@@ -30,6 +29,7 @@ public class TimeseriesUnfixedTest {
     }
 
     public static void main(String[] args) {
+        Logger logger = Logger.getPureLogger("TSUnfixed");
         DatabaseFactory dbf = new DatabaseFactory("./databases/tsTest");
 
         Database database;
@@ -46,7 +46,7 @@ public class TimeseriesUnfixedTest {
         Vertex testVertex = database.newVertex("test").save();
         database.commit();
 
-        Logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
+        logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
         TimeseriesEngine tsEngine = new TimeseriesEngine(database);
 
         tsEngine.begin();
@@ -75,7 +75,7 @@ public class TimeseriesUnfixedTest {
 
                     long periodElapsed = System.currentTimeMillis() - periodStartTime;
                     periodStartTime = System.currentTimeMillis();
-                    Logger.logOnStdout("inserted %d datapoints using %d ms", commitSize, periodElapsed);
+                    logger.logOnStdout("inserted %d datapoints using %d ms", commitSize, periodElapsed);
 
                     tsEngine.begin();
                 }
@@ -85,7 +85,7 @@ public class TimeseriesUnfixedTest {
             tsEngine.commit();
 
             long elapsed = System.currentTimeMillis() - startTime;
-            Logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
+            logger.logOnStdout("insert "+testSize+" datapoints into status of testVertex using "+elapsed+" ms");
 
             tsEngine.begin();
 
@@ -103,13 +103,13 @@ public class TimeseriesUnfixedTest {
                 String lastValue = (String) lastRes.next().getValue();
 
                 elapsed = System.currentTimeMillis() - startTime;
-                Logger.logOnStdout("query [%d, %d] get %s with firstValue=%s, lastValue=%s in %d ms with correct=%s",
+                logger.logOnStdout("query [%d, %d] get %s with firstValue=%s, lastValue=%s in %d ms with correct=%s",
                         queryStart, queryEnd, statistics.toPrettyPrintString(), firstValue, lastValue, elapsed,
                         (strList.get((int) statistics.firstTime).equals(firstValue) && strList.get((int) statistics.lastTime).equals(lastValue)));
             }
 
         } catch (TimeseriesException e) {
-            Logger.logOnStderr(ExceptionSerializer.serializeAll(e));
+            logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;

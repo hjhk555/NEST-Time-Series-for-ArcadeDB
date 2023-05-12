@@ -20,30 +20,30 @@ public abstract class StatsBlock extends ArcadeDocument{
      */
     public static final int CHILD_SIZE = 20;
 
-    public final String measurement;
+    public final String metric;
     public final int degree;
     public final DataType dataType;
     public long startTime;
     public Statistics statistics;
     public boolean isLatest = false;
 
-    public StatsBlock(ArcadeDocumentManager manager, Document document, String measurement, int degree, DataType dataType, long startTime, boolean isLatest){
+    public StatsBlock(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType, long startTime, boolean isLatest){
         super(manager, document);
-        this.measurement = measurement;
+        this.metric = metric;
         this.degree = degree;
         this.dataType = dataType;
         this.startTime = startTime;
         this.isLatest = isLatest;
     }
 
-    public static StatsBlockRoot newStatsTree(ArcadeDocumentManager manager, String measurement, DataType dataType) throws TimeseriesException {
-        return newStatsTree(manager, measurement, dataType, DEFAULT_TREE_DEGREE);
+    public static StatsBlockRoot newStatsTree(ArcadeDocumentManager manager, String metric, DataType dataType) throws TimeseriesException {
+        return newStatsTree(manager, metric, dataType, DEFAULT_TREE_DEGREE);
     }
 
-    public static StatsBlockRoot newStatsTree(ArcadeDocumentManager manager, String measurement, DataType dataType, int degree) throws TimeseriesException {
+    public static StatsBlockRoot newStatsTree(ArcadeDocumentManager manager, String metric, DataType dataType, int degree) throws TimeseriesException {
         // root node
-        StatsBlockRoot newTreeRoot = (StatsBlockRoot) manager.newArcadeDocument(PREFIX_STATSBLOCK+measurement, document1 -> {
-            StatsBlockRoot root = new StatsBlockRoot(manager, document1, measurement, degree, dataType);
+        StatsBlockRoot newTreeRoot = (StatsBlockRoot) manager.newArcadeDocument(PREFIX_STATSBLOCK+metric, document1 -> {
+            StatsBlockRoot root = new StatsBlockRoot(manager, document1, metric, degree, dataType);
             root.childRID = new ArrayList<>();
             root.childStartTime = new ArrayList<>();
             root.statistics = Statistics.newEmptyStats(dataType);
@@ -51,8 +51,8 @@ public abstract class StatsBlock extends ArcadeDocument{
         });
 
         // leaf node
-        StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+measurement, document2 ->{
-            StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document2, measurement, degree, dataType, 0, true);
+        StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+metric, document2 ->{
+            StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document2, metric, degree, dataType, 0, true);
             leaf.dataList = new ArrayList<>();
             leaf.prevRID = manager.nullRID;
             leaf.succRID = manager.nullRID;
@@ -70,13 +70,13 @@ public abstract class StatsBlock extends ArcadeDocument{
         return newTreeRoot;
     }
 
-    public static StatsBlockRoot getStatsBlockRoot(ArcadeDocumentManager manager, RID rid, String measurement) throws TimeseriesException {
+    public static StatsBlockRoot getStatsBlockRoot(ArcadeDocumentManager manager, RID rid, String metric) throws TimeseriesException {
         return (StatsBlockRoot) manager.getArcadeDocument(rid, document1 -> {
             Binary binary = new Binary(document1.getBinary("stat"));
             if (binary.getByte() == StatsBlockRoot.BLOCK_TYPE) {
                 int degree = binary.getInt();
                 DataType dataType = DataType.resolveFromBinary(binary);
-                StatsBlockRoot root = new StatsBlockRoot(manager, document1, measurement, degree, dataType);
+                StatsBlockRoot root = new StatsBlockRoot(manager, document1, metric, degree, dataType);
                 root.statistics = Statistics.getStatisticsFromBinary(dataType, binary);
                 int childSize = binary.getInt();
                 for (int i = 0; i < childSize; i++) {
@@ -90,12 +90,12 @@ public abstract class StatsBlock extends ArcadeDocument{
         });
     }
 
-    public static StatsBlock getStatsBlockNonRoot(ArcadeDocumentManager manager, RID rid, StatsBlock parent, String measurement, int degree, DataType dataType, long startTime, boolean isLatest) throws TimeseriesException {
+    public static StatsBlock getStatsBlockNonRoot(ArcadeDocumentManager manager, RID rid, StatsBlock parent, String metric, int degree, DataType dataType, long startTime, boolean isLatest) throws TimeseriesException {
         StatsBlock statsBlock = (StatsBlock) manager.getArcadeDocument(rid, document1 -> {
             Binary binary = new Binary(document1.getBinary("stat"));
             switch (binary.getByte()){
                 case StatsBlockInternal.BLOCK_TYPE -> {
-                    StatsBlockInternal internal = new StatsBlockInternal(manager, document1, measurement, degree, dataType, startTime, isLatest);
+                    StatsBlockInternal internal = new StatsBlockInternal(manager, document1, metric, degree, dataType, startTime, isLatest);
                     internal.statistics = Statistics.getStatisticsFromBinary(internal.dataType, binary);
                     int childSize = binary.getInt();
                     for (int i=0; i<childSize; i++){
@@ -105,7 +105,7 @@ public abstract class StatsBlock extends ArcadeDocument{
                     return internal;
                 }
                 case StatsBlockLeaf.BLOCK_TYPE -> {
-                    StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document1, measurement, degree, dataType, startTime, isLatest);
+                    StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document1, metric, degree, dataType, startTime, isLatest);
                     leaf.statistics = Statistics.getStatisticsFromBinary(leaf.dataType, binary);
                     leaf.prevRID = manager.getRID(binary.getInt(), binary.getLong());
                     leaf.succRID = manager.getRID(binary.getInt(), binary.getLong());

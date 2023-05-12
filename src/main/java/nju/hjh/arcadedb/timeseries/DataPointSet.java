@@ -16,7 +16,7 @@ public class DataPointSet {
     // rid of first leaf block
     public final RID firstLeafRID;
     public final ArcadeDocumentManager manager;
-    public final String measurement;
+    public final String metric;
     public final int degree;
     public final DataType dataType;
     public ArrayList<DataPoint> dataPointList = new ArrayList<>();
@@ -27,12 +27,12 @@ public class DataPointSet {
     // start leaf's rid for next page load
     public RID nextBlockRID;
 
-    public DataPointSet(long queryStartTime, long queryEndTime, RID firstLeafRID, ArcadeDocumentManager manager, String measurement, int degree, DataType dataType) {
+    public DataPointSet(long queryStartTime, long queryEndTime, RID firstLeafRID, ArcadeDocumentManager manager, String metric, int degree, DataType dataType) {
         this.queryStartTime = queryStartTime;
         this.queryEndTime = queryEndTime;
         this.firstLeafRID = firstLeafRID;
         this.manager = manager;
-        this.measurement = measurement;
+        this.metric = metric;
         this.degree = degree;
         this.dataType = dataType;
         curIndex = -1;
@@ -51,7 +51,7 @@ public class DataPointSet {
             return false;
 
         while (nextBlockRID.isValid() && dataPointList.size() < PREFERRED_DATALIST_SIZE) {
-            StatsBlockLeaf currentLeaf = (StatsBlockLeaf) StatsBlock.getStatsBlockNonRoot(manager, nextBlockRID, null, measurement, degree, dataType, -1, false);
+            StatsBlockLeaf currentLeaf = (StatsBlockLeaf) StatsBlock.getStatsBlockNonRoot(manager, nextBlockRID, null, metric, degree, dataType, -1, false);
             currentLeaf.loadData();
 
             int currentSize = currentLeaf.dataList.size();
@@ -121,5 +121,15 @@ public class DataPointSet {
         }
 
         return dataPointList.get(++curIndex);
+    }
+
+    // query if next data point exist
+    public boolean hasNext() throws TimeseriesException {
+        while (curIndex >= dataPointList.size()-1){
+            // load next page
+            if (!loadNextPage())
+                return false;
+        }
+        return true;
     }
 }
