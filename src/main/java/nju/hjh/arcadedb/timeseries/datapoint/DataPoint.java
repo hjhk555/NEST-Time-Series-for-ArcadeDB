@@ -13,6 +13,7 @@ public abstract class DataPoint {
             throw new TimeseriesException("cannot get max bytes for not fixed data type");
         return switch (type.baseType){
             case LONG -> 16;
+            case DOUBLE -> 16;
             case STRING -> 8 + MathUtils.bytesToWriteUnsignedNumber(type.param) + type.param;
             default -> throw new TimeseriesException("invalid data type");
         };
@@ -21,6 +22,7 @@ public abstract class DataPoint {
     public static DataPoint getDataPointFromBinary(DataType dataType, Binary binary) throws TimeseriesException {
         return switch (dataType.baseType){
             case LONG -> new LongDataPoint(binary.getLong(), binary.getLong());
+            case DOUBLE -> new DoubleDataPoint(binary.getLong(), Double.longBitsToDouble(binary.getLong()));
             case STRING -> new StringDataPoint(binary.getLong(), binary.getString());
             default -> throw new TimeseriesException("invalid data type");
         };

@@ -26,17 +26,12 @@ public abstract class Statistics {
 
     public static Statistics newEmptyStats(DataType type) throws TimeseriesException {
         if (!type.isFixed()) return new UnfixedStatistics();
-        switch (type.baseType){
-            case LONG -> {
-                return new LongStatistics();
-            }
-            case STRING -> {
-                return new StringStatistics();
-            }
-            default -> {
-                throw new TimeseriesException("invalid data type");
-            }
-        }
+        return switch (type.baseType){
+            case LONG -> new LongStatistics();
+            case STRING -> new StringStatistics();
+            case DOUBLE -> new DoubleStatistics();
+            default -> throw new TimeseriesException("invalid data type");
+        };
     }
 
     public static Statistics countStats(DataType type, List<DataPoint> dataList, boolean isTimeOrdered) throws TimeseriesException {
@@ -50,6 +45,7 @@ public abstract class Statistics {
         return switch (type.baseType){
             case LONG -> LongStatistics.maxBytesRequired();
             case STRING -> StringStatistics.maxBytesRequired(type.param);
+            case DOUBLE -> DoubleStatistics.maxBytesRequired();
             default -> throw new TimeseriesException("invalid data type");
         };
     }

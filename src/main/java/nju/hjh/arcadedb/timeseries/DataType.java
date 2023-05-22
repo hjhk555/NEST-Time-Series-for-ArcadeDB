@@ -2,6 +2,7 @@ package nju.hjh.arcadedb.timeseries;
 
 import com.arcadedb.database.Binary;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.datapoint.DoubleDataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
@@ -9,11 +10,13 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 public class DataType {
     public static final DataType LONG;
     public static final DataType STRING;
+    public static final DataType DOUBLE;
 
     static {
         try {
             LONG = new DataType(BaseType.LONG, 0);
             STRING = new DataType(BaseType.STRING, 0);
+            DOUBLE = new DataType(BaseType.DOUBLE, 0);
         } catch (TimeseriesException e) {
             // this should not happen
             throw new RuntimeException(e);
@@ -22,7 +25,8 @@ public class DataType {
 
     public enum BaseType{
         LONG((byte) 0, "LONG"),
-        STRING((byte) 1, "STRING");
+        STRING((byte) 1, "STRING"),
+        DOUBLE((byte) 2, "DOUBLE");
 
         final byte seq;
         final String name;
@@ -79,6 +83,7 @@ public class DataType {
         return switch (bBaseType) {
             case 0 -> new DataType(BaseType.LONG, binary.getInt());
             case 1 -> new DataType(BaseType.STRING, binary.getInt());
+            case 2 -> new DataType(BaseType.DOUBLE, binary.getInt());
             default -> throw new TimeseriesException("invalid data type");
         };
     }
@@ -94,9 +99,20 @@ public class DataType {
             case LONG -> {
                 if (dataPoint instanceof LongDataPoint){
                     return dataPoint;
-                }else{
-                    throw new TimeseriesException("unmatched data and type(Long)");
                 }
+                if (dataPoint instanceof DoubleDataPoint doubleDP) {
+                    return new LongDataPoint(dataPoint.timestamp, (long) doubleDP.value);
+                }
+                throw new TimeseriesException("unmatched data and type(Long)");
+            }
+            case DOUBLE -> {
+                if (dataPoint instanceof DoubleDataPoint){
+                    return dataPoint;
+                }
+                if (dataPoint instanceof LongDataPoint longDP){
+                    return new DoubleDataPoint(dataPoint.timestamp, longDP.value);
+                }
+                throw new TimeseriesException("unmatched data and type(Double)");
             }
             case STRING -> {
                 StringDataPoint strDP;
