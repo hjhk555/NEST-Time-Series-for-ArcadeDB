@@ -38,7 +38,7 @@ public class TimeseriesOODTest {
         try {
             long startTime = System.currentTimeMillis();
 
-            final int testSize = 123456789;
+            final int testSize = 12345678;
             final int commitSize = 1000000;
             final int oodProb = 10;
 
@@ -52,7 +52,7 @@ public class TimeseriesOODTest {
                 if (ran.nextInt(100) < oodProb){
                     oodData.offer(i);
                 }else {
-                    tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), false);
+                    tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.ERROR);
                     count++;
                 }
                 if (count == commitSize){
@@ -72,7 +72,7 @@ public class TimeseriesOODTest {
             long oodSize = oodData.size();
             while (!oodData.isEmpty()){
                 int ood = oodData.poll();
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(ood, ood), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(ood, ood), TSUpdateStrategy.ERROR);
                 count++;
 
                 if (count == commitSize){

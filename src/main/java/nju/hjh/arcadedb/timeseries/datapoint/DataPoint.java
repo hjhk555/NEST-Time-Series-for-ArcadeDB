@@ -1,8 +1,11 @@
 package nju.hjh.arcadedb.timeseries.datapoint;
 
 import com.arcadedb.database.Binary;
+import nju.hjh.arcadedb.timeseries.DataPointSet;
 import nju.hjh.arcadedb.timeseries.DataType;
 import nju.hjh.arcadedb.timeseries.MathUtils;
+import nju.hjh.arcadedb.timeseries.TSUpdateStrategy;
+import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 public abstract class DataPoint {
@@ -29,8 +32,8 @@ public abstract class DataPoint {
     }
 
     public abstract void serialize(Binary binary);
-
+    public abstract DataPoint getUpdatedDataPoint(DataPoint income, TSUpdateStrategy strategy) throws TimeseriesException;
     public abstract int realBytesRequired();
-
     public abstract Object getValue();
+
 }

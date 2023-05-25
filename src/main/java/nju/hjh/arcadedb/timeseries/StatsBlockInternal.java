@@ -55,7 +55,7 @@ public class StatsBlockInternal extends StatsBlock{
     }
 
     @Override
-    public void insert(DataPoint data, boolean updateIfExist) throws TimeseriesException {
+    public void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
         if (childStartTime.size() == 0)
             throw new TimeseriesException("cannot insert datapoint as there's no child block");
 
@@ -84,7 +84,7 @@ public class StatsBlockInternal extends StatsBlock{
         }
 
         boolean isInsertLatest = this.isLatest && (pos == childRID.size() - 1);
-        getStatsBlockNonRoot(manager, childRID.get(pos), this, metric, degree, dataType, childStartTime.get(pos), isInsertLatest).insert(data, updateIfExist);
+        getStatsBlockNonRoot(manager, childRID.get(pos), this, metric, degree, dataType, childStartTime.get(pos), isInsertLatest).insert(data, strategy);
     }
 
     @Override

@@ -11,8 +11,7 @@ import nju.hjh.arcadedb.timeseries.exception.TargetNotFoundException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 
 public class TimeseriesEngine {
     public static final String PREFIX_METRIC_EDGE = "_mtrc_";
@@ -35,6 +34,17 @@ public class TimeseriesEngine {
         engine = new TimeseriesEngine(database);
         engineInstances.put(database, engine);
         return engine;
+    }
+
+    public Set<String> getAllMetrics(Vertex object){
+        Set<String> res = new HashSet<>();
+        for (Edge edge : object.getEdges(Vertex.DIRECTION.OUT)) {
+            String edgeTypeName = edge.getTypeName();
+            if (edgeTypeName.startsWith(PREFIX_METRIC_EDGE)) {
+                res.add(edgeTypeName.substring(PREFIX_METRIC_EDGE.length()));
+            }
+        }
+        return res;
     }
 
     public StatsBlockRoot getStatsTreeRoot(Vertex object, String metric) throws TimeseriesException {
@@ -106,17 +116,17 @@ public class TimeseriesEngine {
      * @param metric name of metric
      * @param dataType type of data
      * @param dataPoint data point to insert
-     * @param updateIfExist update data point if data point exist at target timestamp
-     * @throws DuplicateTimestampException if <code>updateIfExist</code> is false and data point already exist at target timestamp
+     * @param strategy update strategy if data point exist at target timestamp
+     * @throws DuplicateTimestampException if <code>strategy</code> is ERROR and data point already exist at target timestamp
      */
-    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, boolean updateIfExist) throws TimeseriesException {
-        insertDataPoint(object, metric, dataType, dataPoint, updateIfExist, StatsBlock.DEFAULT_TREE_DEGREE);
+    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, TSUpdateStrategy strategy) throws TimeseriesException {
+        insertDataPoint(object, metric, dataType, dataPoint, strategy, StatsBlock.DEFAULT_TREE_DEGREE);
     }
 
-    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, boolean updateIfExist, int statsTreeDegree) throws TimeseriesException {
+    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, TSUpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
         StatsBlockRoot root = getOrNewStatsTreeRoot(object, metric, dataType, statsTreeDegree);
         dataPoint = root.dataType.checkAndConvertDataPoint(dataPoint);
-        root.insert(dataPoint, updateIfExist);
+        root.insert(dataPoint, strategy);
     }
 
     public Statistics aggregativeQuery(Vertex object, String metric, long startTime, long endTime) throws TimeseriesException {

@@ -123,8 +123,8 @@ public class DataType {
                 }
 
                 int strLen = strDP.value.length();
-                if (strLen > 4000)
-                    throw new TimeseriesException(String.format("string length(%d) exceeded hard limit(4000)", strLen));
+                if (strLen > StringDataPoint.MAX_LENGTH)
+                    throw new TimeseriesException(String.format("string length(%d) exceeded hard limit(%d)", strLen, StringDataPoint.MAX_LENGTH));
                 if (param > 0 && strLen > param)
                     throw new TimeseriesException(String.format("string lwngth(%d) exceeded limit(%d)", strLen, param));
                 return dataPoint;

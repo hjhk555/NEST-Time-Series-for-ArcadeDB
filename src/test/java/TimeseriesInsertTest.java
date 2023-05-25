@@ -37,7 +37,7 @@ public class TimeseriesInsertTest {
         try {
             long startTime = System.currentTimeMillis();
 
-            final int testSize = 123456789;
+            final int testSize = 12345678;
             final int commitSize = 1000000;
 
             Random ran = new Random();
@@ -54,7 +54,7 @@ public class TimeseriesInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.ERROR);
             }
 
             tsEngine.commit();

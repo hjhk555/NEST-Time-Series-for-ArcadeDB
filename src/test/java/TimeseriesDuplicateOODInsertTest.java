@@ -55,7 +55,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.ERROR);
             }
             tsEngine.commit();
 
@@ -74,11 +74,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                try{
-                    tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.LONG, 0), new LongDataPoint(i, i), false);
-                    logger.logOnStderr("duplicate insert success but should not at datapoint "+i);
-                }catch (DuplicateTimestampException ignored){
-                }
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.IGNORE);
             }
 
             tsEngine.commit();

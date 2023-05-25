@@ -5,7 +5,6 @@ import com.arcadedb.database.Document;
 import com.arcadedb.database.MutableDocument;
 import com.arcadedb.database.RID;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
-import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
@@ -87,15 +86,15 @@ public class StatsBlockLeaf extends StatsBlock{
     }
 
     @Override
-    public void insert(DataPoint data, boolean updateIfExist) throws TimeseriesException {
+    public void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
         if (dataType.isFixed())
-            insertFixed(data, updateIfExist);
+            insertFixed(data, strategy);
         else{
-            insertUnfixed(data, updateIfExist);
+            insertUnfixed(data, strategy);
         }
     }
 
-    public void insertFixed(DataPoint data, boolean updateIfExist) throws TimeseriesException {
+    public void insertFixed(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
         if (data.timestamp < startTime)
             throw new TimeseriesException("target dataPoint should not be handled by this leaf");
 
@@ -107,7 +106,7 @@ public class StatsBlockLeaf extends StatsBlock{
         if (isLatest && dataList.size() >= maxdataSize)
             throw new TimeseriesException("latest leaf block is full to insert, which should not occur");
 
-        boolean update = false;
+        boolean alExist = false;
         int pos = -1;
         if (dataList.size() == 0 || dataList.get(0).timestamp > data.timestamp){
             // insert at head
@@ -126,29 +125,28 @@ public class StatsBlockLeaf extends StatsBlock{
                 else if (midTime > data.timestamp)
                     high = mid - 1;
                 else {
-                    if (!updateIfExist)
-                        throw new DuplicateTimestampException("datapoint already exist in metric '"+ metric +"' at timestamp "+dataList.get(mid).timestamp);
-                    // update
-                    update = true;
+                    // already exist
+                    alExist = true;
                     pos = mid;
                     break;
                 }
             }
-            if (!update)
+            if (!alExist)
                 pos = low;
         }
 
-        if (update){
+        if (alExist){
             DataPoint oldDP = dataList.get(pos);
-            // old and new have same value
-            if (oldDP.getValue().equals(data.getValue()))
+            DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
+            // no need to update
+            if (newDP == null || oldDP.getValue().equals(newDP.getValue()))
                 return;
-            dataList.set(pos, data);
-            if (!statistics.update(oldDP, data)){
+            dataList.set(pos, newDP);
+            if (!statistics.update(oldDP, newDP)){
                 statistics = Statistics.countStats(dataType, dataList, true);
             }
             if (!isLatest)
-                parent.updateStats(oldDP, data);
+                parent.updateStats(oldDP, newDP);
         }else {
             dataList.add(pos, data);
             statistics.insert(data);
@@ -212,14 +210,14 @@ public class StatsBlockLeaf extends StatsBlock{
         setAsDirty();
     }
 
-    private void insertUnfixed(DataPoint data, boolean updateIfExist) throws TimeseriesException {
+    private void insertUnfixed(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
         if (data.timestamp < startTime)
             throw new TimeseriesException("target dataPoint should not be handled by this leaf");
 
         if (dataList == null)
             loadData();
 
-        boolean update = false;
+        boolean alExist = false;
         int pos = -1;
         if (dataList.size() == 0 || dataList.get(0).timestamp > data.timestamp){
             // insert at head
@@ -238,30 +236,29 @@ public class StatsBlockLeaf extends StatsBlock{
                 else if (midTime > data.timestamp)
                     high = mid - 1;
                 else {
-                    if (!updateIfExist)
-                        throw new DuplicateTimestampException("datapoint already exist in metric '"+ metric +"' at timestamp "+dataList.get(mid).timestamp);
-                    // update
-                    update = true;
+                    // already exist
+                    alExist = true;
                     pos = mid;
                     break;
                 }
             }
-            if (!update)
+            if (!alExist)
                 pos = low;
         }
 
-        if (update){
+        if (alExist){
             DataPoint oldDP = dataList.get(pos);
-            // old and new have same value
-            if (oldDP.getValue().equals(data.getValue()))
+            DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
+            // no need to update
+            if (newDP == null || oldDP.getValue().equals(newDP.getValue()))
                 return;
-            dataList.set(pos, data);
-            dataBytesUseed += data.realBytesRequired() - oldDP.realBytesRequired();
-            if (!statistics.update(oldDP, data)){
+            dataList.set(pos, newDP);
+            dataBytesUseed += newDP.realBytesRequired() - oldDP.realBytesRequired();
+            if (!statistics.update(oldDP, newDP)){
                 statistics = Statistics.countStats(dataType, dataList, true);
             }
             if (!isLatest)
-                parent.updateStats(oldDP, data);
+                parent.updateStats(oldDP, newDP);
         }else {
             dataList.add(pos, data);
             dataBytesUseed += data.realBytesRequired();

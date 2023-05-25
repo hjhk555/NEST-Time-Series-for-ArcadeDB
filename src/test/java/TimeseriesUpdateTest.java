@@ -4,6 +4,7 @@ import com.arcadedb.graph.Vertex;
 import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
 import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.TSUpdateStrategy;
 import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
@@ -54,7 +55,7 @@ public class TimeseriesUpdateTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), false);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.ERROR);
             }
 
             tsEngine.commit();
@@ -77,7 +78,7 @@ public class TimeseriesUpdateTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, 2*i), true);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, 2*i), TSUpdateStrategy.UPDATE);
             }
 
             tsEngine.commit();
@@ -90,8 +91,6 @@ public class TimeseriesUpdateTest {
             for (int i=0; i<20; i++){
                 int queryStart = ran.nextInt(testSize);
                 int queryEnd = ran.nextInt(queryStart, testSize);
-                queryStart = 120276;
-                queryEnd = 425937;
                 long ans = (long) (queryEnd + queryStart) * (queryEnd - queryStart + 1);
 
                 startTime = System.currentTimeMillis();

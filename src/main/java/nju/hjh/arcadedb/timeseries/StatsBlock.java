@@ -133,7 +133,7 @@ public abstract class StatsBlock extends ArcadeDocument{
      * @param data the data point to insert
      * @throws TimeseriesException
      */
-    public abstract void insert(DataPoint data, boolean updateIfExist) throws TimeseriesException;
+    public abstract void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException;
 
     // append statistics of out-of-order data point
     public abstract void appendStats(DataPoint data) throws TimeseriesException;
