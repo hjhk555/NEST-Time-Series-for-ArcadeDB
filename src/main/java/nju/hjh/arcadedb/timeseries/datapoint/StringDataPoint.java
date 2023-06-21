@@ -36,10 +36,7 @@ public class StringDataPoint extends DataPoint{
                     return income;
                 }
                 case APPEND -> {
-                    String newString = this.value+strategy.separator+sIncome.value;
-                    if (newString.length() > MAX_LENGTH)
-                        throw new DuplicateTimestampException(String.format("string length exceeded hard limit(%d) after append", MAX_LENGTH));
-                    return new StringDataPoint(timestamp, newString);
+                    return new StringDataPoint(timestamp, this.value+strategy.separator+sIncome.value);
                 }
                 default -> throw new TimeseriesException("unknown update strategy");
             }
