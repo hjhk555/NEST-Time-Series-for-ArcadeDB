@@ -139,7 +139,10 @@ public class StatsBlockLeaf extends StatsBlock{
             DataPoint oldDP = dataList.get(pos);
             DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
             // no need to update
-            if (newDP == null || oldDP.getValue().equals(newDP.getValue()))
+            if (newDP == null)
+                return;
+            newDP = dataType.checkAndConvertDataPoint(newDP);
+            if (oldDP.getValue().equals(newDP.getValue()))
                 return;
             dataList.set(pos, newDP);
             if (!statistics.update(oldDP, newDP)){
@@ -250,7 +253,10 @@ public class StatsBlockLeaf extends StatsBlock{
             DataPoint oldDP = dataList.get(pos);
             DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
             // no need to update
-            if (newDP == null || oldDP.getValue().equals(newDP.getValue()))
+            if (newDP == null)
+                return;
+            newDP = dataType.checkAndConvertDataPoint(newDP);
+            if (oldDP.getValue().equals(newDP.getValue()))
                 return;
             dataList.set(pos, newDP);
             dataBytesUseed += newDP.realBytesRequired() - oldDP.realBytesRequired();
