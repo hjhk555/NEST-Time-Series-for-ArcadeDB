@@ -37,7 +37,7 @@ public class TimeseriesInsertTest {
         try {
             long startTime = System.currentTimeMillis();
 
-            final int testSize = 12345678;
+            final int testSize = 123456789;
             final int commitSize = 1000000;
 
             Random ran = new Random();

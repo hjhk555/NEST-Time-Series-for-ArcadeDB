@@ -25,8 +25,8 @@ public class StatsBlockLeaf extends StatsBlock{
     // for unfixed data type
     public int dataBytesUseed;
 
-    public StatsBlockLeaf(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType, long startTime, boolean isLatest) throws TimeseriesException {
-        super(manager, document, metric, degree, dataType, startTime, isLatest);
+    public StatsBlockLeaf(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) throws TimeseriesException {
+        super(manager, document, metric, degree, dataType);
         statistics = Statistics.newEmptyStats(dataType);
     }
 
@@ -87,6 +87,12 @@ public class StatsBlockLeaf extends StatsBlock{
 
     @Override
     public void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
+        if (data.timestamp < startTime)
+            throw new TimeseriesException("target dataPoint should not be handled by this leaf");
+
+        if (dataList == null)
+            loadData();
+
         if (dataType.isFixed())
             insertFixed(data, strategy);
         else{
@@ -95,111 +101,67 @@ public class StatsBlockLeaf extends StatsBlock{
     }
 
     public void insertFixed(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
-        if (data.timestamp < startTime)
-            throw new TimeseriesException("target dataPoint should not be handled by this leaf");
-
-        if (dataList == null)
-            loadData();
-
         int maxdataSize = MAX_DATA_BLOCK_SIZE / DataPoint.maxBytesRequired(dataType);
 
-        if (isLatest && dataList.size() >= maxdataSize)
-            throw new TimeseriesException("latest leaf block is full to insert, which should not occur");
+        int insertPos = MathUtils.longBinarySearchLatter(dataList, data.timestamp, object -> object.timestamp);
 
-        boolean alExist = false;
-        int pos = -1;
-        if (dataList.size() == 0 || dataList.get(0).timestamp > data.timestamp){
-            // insert at head
-            pos = 0;
-        }else if (dataList.get(dataList.size()-1).timestamp < data.timestamp){
-            // insert at tail
-            pos = dataList.size();
-        }else {
-            // binary search
-            int low = 0, high = dataList.size() - 1;
-            while (low <= high) {
-                int mid = (low + high) >>> 1;
-                long midTime = dataList.get(mid).timestamp;
-                if (midTime < data.timestamp)
-                    low = mid + 1;
-                else if (midTime > data.timestamp)
-                    high = mid - 1;
-                else {
-                    // already exist
-                    alExist = true;
-                    pos = mid;
-                    break;
-                }
-            }
-            if (!alExist)
-                pos = low;
-        }
-
-        if (alExist){
-            DataPoint oldDP = dataList.get(pos);
+        if (insertPos < dataList.size() && dataList.get(insertPos).timestamp == data.timestamp){
+            // already exist
+            DataPoint oldDP = dataList.get(insertPos);
             DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
-            // no need to update
             if (newDP == null)
-                return;
+                return; // no need to update
             newDP = dataType.checkAndConvertDataPoint(newDP);
             if (oldDP.getValue().equals(newDP.getValue()))
-                return;
-            dataList.set(pos, newDP);
+                return; // no need to update
+            dataList.set(insertPos, newDP);
             if (!statistics.update(oldDP, newDP)){
                 statistics = Statistics.countStats(dataType, dataList, true);
             }
-            if (!isLatest)
+            if (!isActive)
                 parent.updateStats(oldDP, newDP);
         }else {
-            dataList.add(pos, data);
+            dataList.add(insertPos, data);
             statistics.insert(data);
-            if (!isLatest)
+            if (!isActive)
                 parent.appendStats(data);
         }
 
-        if (isLatest){
-            // commit latest block if full
-            if (dataList.size() == maxdataSize){
-                parent.appendStats(this.statistics);
+        // split if full
+        if (dataList.size() > maxdataSize){
+            // split into 2 blocks
+            int totalSize = dataList.size();
+            int splitedSize;
+            if (isActive)
+                splitedSize = maxdataSize;
+            else
+                splitedSize = totalSize / 2;
 
-                DataPoint lastDataPoint = dataList.get(maxdataSize - 1);
-                StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
-                    return new StatsBlockLeaf(manager, document1, metric, degree, dataType, lastDataPoint.timestamp+1, true);
-                });
-                this.isLatest = false;
+            StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
+                return new StatsBlockLeaf(manager, document1, metric, degree, dataType);
+            });
+            newLeaf.setStartTime(this.dataList.get(splitedSize).timestamp);
+            newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, totalSize));
 
-                newLeaf.dataList = new ArrayList<>();
+            // calc latter half statistics
+            newLeaf.statistics = Statistics.countStats(dataType, newLeaf.dataList, true);
 
-                // link leaves
+            // update this block statistics
+            this.dataList = new ArrayList<>(this.dataList.subList(0, splitedSize));
+            this.statistics = Statistics.countStats(dataType, this.dataList, true);
+
+            // link leaves
+            if (isActive){
+                // wait root node to handle
+                newLeaf.setActive(true);
+                this.setActive(false);
+
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.succRID = manager.nullRID;
                 newLeaf.save();
                 this.succRID = newLeaf.document.getIdentity();
-
-                parent.addChild(newLeaf);
-            }
-        }else{
-            // split if full
-            if (dataList.size() > maxdataSize){
-                // split into 2 blocks
-                int totalSize = dataList.size();
-                int splitedSize = totalSize / 2;
-                DataPoint LatterfirstDataPoint = dataList.get(splitedSize);
-
-                StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
-                    return new StatsBlockLeaf(manager, document1, metric, degree, dataType, LatterfirstDataPoint.timestamp, false);
-                });
-                newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, totalSize));
-
-                // calc latter half statistics
-                newLeaf.statistics = Statistics.countStats(dataType, newLeaf.dataList, true);
-
-                // update this block statistics
-                this.dataList = new ArrayList<>(this.dataList.subList(0, splitedSize));
-                this.statistics = Statistics.countStats(dataType, this.dataList, true);
-
-                // link leaves
-                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, null, metric, degree, dataType, -1, false);
+            }else {
+                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, metric, degree, dataType);
                 newLeaf.succRID = this.succRID;
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.save();
@@ -210,66 +172,34 @@ public class StatsBlockLeaf extends StatsBlock{
                 parent.addChild(newLeaf);
             }
         }
+
         setAsDirty();
     }
 
     private void insertUnfixed(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
-        if (data.timestamp < startTime)
-            throw new TimeseriesException("target dataPoint should not be handled by this leaf");
+        int insertPos = MathUtils.longBinarySearchLatter(dataList, data.timestamp, object -> object.timestamp);
 
-        if (dataList == null)
-            loadData();
-
-        boolean alExist = false;
-        int pos = -1;
-        if (dataList.size() == 0 || dataList.get(0).timestamp > data.timestamp){
-            // insert at head
-            pos = 0;
-        }else if (dataList.get(dataList.size()-1).timestamp < data.timestamp){
-            // insert at tail
-            pos = dataList.size();
-        }else {
-            // binary search
-            int low = 0, high = dataList.size() - 1;
-            while (low <= high) {
-                int mid = (low + high) >>> 1;
-                long midTime = dataList.get(mid).timestamp;
-                if (midTime < data.timestamp)
-                    low = mid + 1;
-                else if (midTime > data.timestamp)
-                    high = mid - 1;
-                else {
-                    // already exist
-                    alExist = true;
-                    pos = mid;
-                    break;
-                }
-            }
-            if (!alExist)
-                pos = low;
-        }
-
-        if (alExist){
-            DataPoint oldDP = dataList.get(pos);
+        if (insertPos < dataList.size() && dataList.get(insertPos).timestamp == data.timestamp){
+            // already exsit
+            DataPoint oldDP = dataList.get(insertPos);
             DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
-            // no need to update
             if (newDP == null)
-                return;
+                return; // no need to update
             newDP = dataType.checkAndConvertDataPoint(newDP);
             if (oldDP.getValue().equals(newDP.getValue()))
-                return;
-            dataList.set(pos, newDP);
+                return; // no need to update
+            dataList.set(insertPos, newDP);
             dataBytesUseed += newDP.realBytesRequired() - oldDP.realBytesRequired();
             if (!statistics.update(oldDP, newDP)){
                 statistics = Statistics.countStats(dataType, dataList, true);
             }
-            if (!isLatest)
+            if (!isActive)
                 parent.updateStats(oldDP, newDP);
         }else {
-            dataList.add(pos, data);
+            dataList.add(insertPos, data);
             dataBytesUseed += data.realBytesRequired();
             statistics.insert(data);
-            if (!isLatest)
+            if (!isActive)
                 parent.appendStats(data);
         }
 
@@ -277,7 +207,7 @@ public class StatsBlockLeaf extends StatsBlock{
         if (dataBytesUseed > MAX_DATA_BLOCK_SIZE){
             // locate split size
             int splitedBytes, splitedSize;
-            if (isLatest){
+            if (isActive){
                 // fill this block as much as possible
                 splitedBytes = dataBytesUseed;
                 splitedSize = dataList.size();
@@ -305,10 +235,10 @@ public class StatsBlockLeaf extends StatsBlock{
             }
 
             // create latter half leaf node
-            DataPoint LatterfirstDataPoint = dataList.get(splitedSize);
             StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
-                return new StatsBlockLeaf(manager, document1, metric, degree, dataType, LatterfirstDataPoint.timestamp, isLatest);
+                return new StatsBlockLeaf(manager, document1, metric, degree, dataType);
             });
+            newLeaf.setStartTime(dataList.get(splitedSize).timestamp);
             newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, dataList.size()));
             newLeaf.dataBytesUseed = this.dataBytesUseed - splitedBytes;
             newLeaf.statistics = Statistics.countStats(dataType, newLeaf.dataList, true);
@@ -319,36 +249,32 @@ public class StatsBlockLeaf extends StatsBlock{
             statistics = Statistics.countStats(dataType, dataList, true);
 
             // link leaves
-            if (isLatest) {
-                // commit statistics if is latest
-                parent.appendStats(this.statistics);
+            if (isActive) {
+                // wait root node to handle
+                newLeaf.setActive(true);
+                this.setActive(false);
 
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.succRID = manager.nullRID;
                 newLeaf.save();
                 this.succRID = newLeaf.document.getIdentity();
             }else{
-                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, null, metric, degree, dataType, -1, false);
+                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, metric, degree, dataType);
                 newLeaf.succRID = this.succRID;
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.save();
                 this.succRID = newLeaf.document.getIdentity();
                 succLeaf.prevRID = newLeaf.document.getIdentity();
                 succLeaf.setAsDirty();
-            }
 
-            parent.addChild(newLeaf);
+                parent.addChild(newLeaf);
+            }
         }
         setAsDirty();
     }
 
     @Override
     public void appendStats(DataPoint data) throws TimeseriesException {
-        throw new TimeseriesException("leaf node should not append statistics");
-    }
-
-    @Override
-    public void appendStats(Statistics stats) throws TimeseriesException {
         throw new TimeseriesException("leaf node should not append statistics");
     }
 
@@ -360,6 +286,11 @@ public class StatsBlockLeaf extends StatsBlock{
     @Override
     public void addChild(StatsBlock child) throws TimeseriesException {
         throw new TimeseriesException("cannot add child to leaf node");
+    }
+
+    @Override
+    public void addLeafBlock(StatsBlockLeaf leaf) throws TimeseriesException {
+        parent.addChild(leaf);
     }
 
     @Override
@@ -378,50 +309,21 @@ public class StatsBlockLeaf extends StatsBlock{
             loadData();
 
         // locate first DataPoint
-        int startPos = -1;
+        int startPos;
         if (statistics.firstTime >= startTime){
             // start from head
             startPos = 0;
         }else {
-            // binary search
-            int low = 0, high = dataList.size() - 1;
-            while (low <= high) {
-                int mid = (low + high) >>> 1;
-                long midTime = dataList.get(mid).timestamp;
-                if (midTime > startTime)
-                    high = mid - 1;
-                else if (midTime < startTime)
-                    low = mid + 1;
-                else {
-                    startPos = mid;
-                    break;
-                }
-            }
-            if (low > high)
-                startPos = low;
+            startPos = MathUtils.longBinarySearchLatter(dataList, startTime, object -> object.timestamp);
         }
 
         // locate last DataPoint
-        int endPos = -1;
+        int endPos;
         if (statistics.lastTime <= endTime){
+            // end at tail
             endPos = dataList.size()-1;
         }else{
-            // binary search
-            int low = 0, high = dataList.size() - 1;
-            while (low <= high) {
-                int mid = (low + high) >>> 1;
-                long midTime = dataList.get(mid).timestamp;
-                if (midTime > endTime)
-                    high = mid - 1;
-                else if (midTime < endTime)
-                    low = mid + 1;
-                else {
-                    endPos = mid;
-                    break;
-                }
-            }
-            if (low > high)
-                endPos = high;
+            endPos = MathUtils.longBinarySearchFormer(dataList, endTime, object -> object.timestamp);
         }
 
         return Statistics.countStats(dataType, dataList.subList(startPos, endPos+1), true);

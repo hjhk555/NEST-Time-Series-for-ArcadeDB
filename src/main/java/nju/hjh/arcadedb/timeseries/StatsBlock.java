@@ -23,17 +23,15 @@ public abstract class StatsBlock extends ArcadeDocument{
     public final String metric;
     public final int degree;
     public final DataType dataType;
-    public long startTime;
+    public long startTime = 0;
     public Statistics statistics;
-    public boolean isLatest = false;
+    public boolean isActive = false;
 
-    public StatsBlock(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType, long startTime, boolean isLatest){
+    public StatsBlock(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType){
         super(manager, document);
         this.metric = metric;
         this.degree = degree;
         this.dataType = dataType;
-        this.startTime = startTime;
-        this.isLatest = isLatest;
     }
 
     public static StatsBlockRoot newStatsTree(ArcadeDocumentManager manager, String metric, DataType dataType) throws TimeseriesException {
@@ -52,7 +50,7 @@ public abstract class StatsBlock extends ArcadeDocument{
 
         // leaf node
         StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+metric, document2 ->{
-            StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document2, metric, degree, dataType, 0, true);
+            StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document2, metric, degree, dataType);
             leaf.dataList = new ArrayList<>();
             leaf.prevRID = manager.nullRID;
             leaf.succRID = manager.nullRID;
@@ -62,8 +60,8 @@ public abstract class StatsBlock extends ArcadeDocument{
         newLeaf.save();
 
         // link leaf to root
-        newTreeRoot.childRID.add(newLeaf.document.getIdentity());
-        newTreeRoot.childStartTime.add(0L);
+        newTreeRoot.latestRID = newLeaf.document.getIdentity();
+        newTreeRoot.latestStartTime = 0;
 
         newTreeRoot.save();
 
@@ -77,6 +75,8 @@ public abstract class StatsBlock extends ArcadeDocument{
                 int degree = binary.getInt();
                 DataType dataType = DataType.resolveFromBinary(binary);
                 StatsBlockRoot root = new StatsBlockRoot(manager, document1, metric, degree, dataType);
+                root.latestRID = manager.getRID(binary.getInt(), binary.getLong());
+                root.latestStartTime = binary.getLong();
                 root.statistics = Statistics.getStatisticsFromBinary(dataType, binary);
                 int childSize = binary.getInt();
                 for (int i = 0; i < childSize; i++) {
@@ -90,12 +90,12 @@ public abstract class StatsBlock extends ArcadeDocument{
         });
     }
 
-    public static StatsBlock getStatsBlockNonRoot(ArcadeDocumentManager manager, RID rid, StatsBlock parent, String metric, int degree, DataType dataType, long startTime, boolean isLatest) throws TimeseriesException {
+    public static StatsBlock getStatsBlockNonRoot(ArcadeDocumentManager manager, RID rid, String metric, int degree, DataType dataType) throws TimeseriesException {
         StatsBlock statsBlock = (StatsBlock) manager.getArcadeDocument(rid, document1 -> {
             Binary binary = new Binary(document1.getBinary("stat"));
             switch (binary.getByte()){
                 case StatsBlockInternal.BLOCK_TYPE -> {
-                    StatsBlockInternal internal = new StatsBlockInternal(manager, document1, metric, degree, dataType, startTime, isLatest);
+                    StatsBlockInternal internal = new StatsBlockInternal(manager, document1, metric, degree, dataType);
                     internal.statistics = Statistics.getStatisticsFromBinary(internal.dataType, binary);
                     int childSize = binary.getInt();
                     for (int i=0; i<childSize; i++){
@@ -105,7 +105,7 @@ public abstract class StatsBlock extends ArcadeDocument{
                     return internal;
                 }
                 case StatsBlockLeaf.BLOCK_TYPE -> {
-                    StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document1, metric, degree, dataType, startTime, isLatest);
+                    StatsBlockLeaf leaf = new StatsBlockLeaf(manager, document1, metric, degree, dataType);
                     leaf.statistics = Statistics.getStatisticsFromBinary(leaf.dataType, binary);
                     leaf.prevRID = manager.getRID(binary.getInt(), binary.getLong());
                     leaf.succRID = manager.getRID(binary.getInt(), binary.getLong());
@@ -119,11 +119,14 @@ public abstract class StatsBlock extends ArcadeDocument{
                 }
             }
         });
-        // override cached object whose parent changed
-        statsBlock.setParent(parent);
-        statsBlock.startTime = startTime;
-        statsBlock.isLatest = isLatest;
         return statsBlock;
+    }
+
+    public void setStartTime(long startTime){
+        this.startTime = startTime;
+    }
+    public void setActive(boolean isActive){
+        this.isActive = isActive;
     }
 
     public abstract void setParent(StatsBlock parent);
@@ -138,13 +141,14 @@ public abstract class StatsBlock extends ArcadeDocument{
     // append statistics of out-of-order data point
     public abstract void appendStats(DataPoint data) throws TimeseriesException;
 
-    // append statistics of latest child block
-    public abstract void appendStats(Statistics stats) throws TimeseriesException;
-
     // update statistics of updated data point
     public abstract void updateStats(DataPoint oldDP, DataPoint newDP) throws TimeseriesException;
 
+    // add child node without appending statistics
     public abstract void addChild(StatsBlock child) throws TimeseriesException;
+
+    // insert leaf block into tree
+    public abstract void addLeafBlock(StatsBlockLeaf leaf) throws TimeseriesException;
 
     public abstract Statistics aggregativeQuery(long startTime, long endTime) throws TimeseriesException;
 

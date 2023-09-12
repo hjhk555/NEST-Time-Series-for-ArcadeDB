@@ -51,7 +51,7 @@ public class DataPointSet {
             return false;
 
         while (nextBlockRID.isValid() && dataPointList.size() < PREFERRED_DATALIST_SIZE) {
-            StatsBlockLeaf currentLeaf = (StatsBlockLeaf) StatsBlock.getStatsBlockNonRoot(manager, nextBlockRID, null, metric, degree, dataType, -1, false);
+            StatsBlockLeaf currentLeaf = (StatsBlockLeaf) StatsBlock.getStatsBlockNonRoot(manager, nextBlockRID, metric, degree, dataType);
             currentLeaf.loadData();
 
             int currentSize = currentLeaf.dataList.size();
