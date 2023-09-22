@@ -5,7 +5,6 @@ import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
 import nju.hjh.arcadedb.timeseries.*;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
-import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
 
@@ -55,7 +54,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
             }
             tsEngine.commit();
 
@@ -74,7 +73,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.IGNORE);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.IGNORE);
             }
 
             tsEngine.commit();

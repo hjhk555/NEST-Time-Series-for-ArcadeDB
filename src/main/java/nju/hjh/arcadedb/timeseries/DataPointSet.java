@@ -7,18 +7,18 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import java.util.ArrayList;
 
 public class DataPointSet {
-    // preferred page size
-    public static final int PREFERRED_DATALIST_SIZE = 10000;
     // query's start time
     public final long queryStartTime;
     // query's start time
     public final long queryEndTime;
     // rid of first leaf block
     public final RID firstLeafRID;
+
     public final ArcadeDocumentManager manager;
     public final String metric;
     public final int degree;
     public final DataType dataType;
+
     public ArrayList<DataPoint> dataPointList = new ArrayList<>();
     // index of current data point in list
     public int curIndex;
@@ -50,7 +50,7 @@ public class DataPointSet {
         if (nextStartTime > queryEndTime || !nextBlockRID.isValid())
             return false;
 
-        while (nextBlockRID.isValid() && dataPointList.size() < PREFERRED_DATALIST_SIZE) {
+        while (dataPointList.isEmpty() && nextBlockRID.isValid()) {
             StatsBlockLeaf currentLeaf = (StatsBlockLeaf) StatsBlock.getStatsBlockNonRoot(manager, nextBlockRID, metric, degree, dataType);
             currentLeaf.loadData();
 
@@ -61,47 +61,17 @@ public class DataPointSet {
             if (currentLeaf.statistics.firstTime >= nextStartTime)
                 // start from head
                 startPos = 0;
-            else{
+            else
                 // binary search
-                int low = 0, high = currentSize - 1;
-                while (low <= high) {
-                    int mid = (low + high) >>> 1;
-                    long midTime = currentLeaf.dataList.get(mid).timestamp;
-                    if (midTime > nextStartTime)
-                        high = mid - 1;
-                    else if (midTime < nextStartTime)
-                        low = mid + 1;
-                    else {
-                        startPos = mid;
-                        break;
-                    }
-                }
-                if (low > high)
-                    startPos = low;
-            }
+                startPos = MathUtils.longBinarySearchLatter(currentLeaf.dataList, nextStartTime, object -> object.timestamp);
 
             endPos = -2;
             if (currentLeaf.statistics.lastTime <= queryEndTime)
                 // end at tail
                 endPos = currentSize-1;
-            else{
+            else
                 // binary search
-                int low = 0, high = currentSize - 1;
-                while (low <= high) {
-                    int mid = (low + high) >>> 1;
-                    long midTime = currentLeaf.dataList.get(mid).timestamp;
-                    if (midTime > queryEndTime)
-                        high = mid - 1;
-                    else if (midTime < queryEndTime)
-                        low = mid + 1;
-                    else {
-                        endPos = mid;
-                        break;
-                    }
-                }
-                if (low > high)
-                    endPos = high;
-            }
+                endPos = MathUtils.longBinarySearchFormer(currentLeaf.dataList, queryEndTime, object -> object.timestamp);
 
             if (startPos <= endPos)
                 dataPointList.addAll(currentLeaf.dataList.subList(startPos, endPos+1));

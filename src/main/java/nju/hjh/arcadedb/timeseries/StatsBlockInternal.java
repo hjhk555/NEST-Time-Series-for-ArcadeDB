@@ -55,7 +55,7 @@ public class StatsBlockInternal extends StatsBlock{
     }
 
     @Override
-    public void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
+    public void insert(DataPoint data, UpdateStrategy strategy) throws TimeseriesException {
         if (childStartTime.size() == 0)
             throw new TimeseriesException("cannot insert datapoint as there's no child block");
 

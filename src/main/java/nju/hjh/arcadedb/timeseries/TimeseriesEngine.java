@@ -119,11 +119,11 @@ public class TimeseriesEngine {
      * @param strategy update strategy if data point exist at target timestamp
      * @throws DuplicateTimestampException if <code>strategy</code> is ERROR and data point already exist at target timestamp
      */
-    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, TSUpdateStrategy strategy) throws TimeseriesException {
+    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy) throws TimeseriesException {
         insertDataPoint(object, metric, dataType, dataPoint, strategy, StatsBlock.DEFAULT_TREE_DEGREE);
     }
 
-    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, TSUpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
+    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
         StatsBlockRoot root = getOrNewStatsTreeRoot(object, metric, dataType, statsTreeDegree);
         dataPoint = root.dataType.checkAndConvertDataPoint(dataPoint);
         root.insert(dataPoint, strategy);

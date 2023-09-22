@@ -86,7 +86,7 @@ public class StatsBlockLeaf extends StatsBlock{
     }
 
     @Override
-    public void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
+    public void insert(DataPoint data, UpdateStrategy strategy) throws TimeseriesException {
         if (data.timestamp < startTime)
             throw new TimeseriesException("target dataPoint should not be handled by this leaf");
 
@@ -100,7 +100,7 @@ public class StatsBlockLeaf extends StatsBlock{
         }
     }
 
-    public void insertFixed(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
+    public void insertFixed(DataPoint data, UpdateStrategy strategy) throws TimeseriesException {
         int maxdataSize = MAX_DATA_BLOCK_SIZE / DataPoint.maxBytesRequired(dataType);
 
         int insertPos = MathUtils.longBinarySearchLatter(dataList, data.timestamp, object -> object.timestamp);
@@ -176,7 +176,7 @@ public class StatsBlockLeaf extends StatsBlock{
         setAsDirty();
     }
 
-    private void insertUnfixed(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
+    private void insertUnfixed(DataPoint data, UpdateStrategy strategy) throws TimeseriesException {
         int insertPos = MathUtils.longBinarySearchLatter(dataList, data.timestamp, object -> object.timestamp);
 
         if (insertPos < dataList.size() && dataList.get(insertPos).timestamp == data.timestamp){

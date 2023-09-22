@@ -5,7 +5,7 @@ import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
 import nju.hjh.arcadedb.timeseries.DataPointSet;
 import nju.hjh.arcadedb.timeseries.DataType;
-import nju.hjh.arcadedb.timeseries.TSUpdateStrategy;
+import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
@@ -80,7 +80,7 @@ public class TimeseriesUnfixedTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.STRING, new StringDataPoint(index, strList.get(index)), TSUpdateStrategy.UPDATE);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.STRING, new StringDataPoint(index, strList.get(index)), UpdateStrategy.UPDATE);
             }
 
             tsEngine.commit();

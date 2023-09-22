@@ -67,14 +67,14 @@ public class StatsBlockRoot extends StatsBlock{
 
 
     @Override
-    public void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
+    public void insert(DataPoint data, UpdateStrategy strategy) throws TimeseriesException {
         if (data.timestamp >= latestStartTime)
             insertLatest(data, strategy);
         else
             insertTree(data, strategy);
     }
 
-    private void insertLatest(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException{
+    private void insertLatest(DataPoint data, UpdateStrategy strategy) throws TimeseriesException{
         StatsBlockLeaf latestBlock = (StatsBlockLeaf) getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType);
         latestBlock.setStartTime(latestStartTime);
         latestBlock.setActive(true);
@@ -90,7 +90,7 @@ public class StatsBlockRoot extends StatsBlock{
         }
     }
 
-    private void insertTree(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException {
+    private void insertTree(DataPoint data, UpdateStrategy strategy) throws TimeseriesException {
         if (childStartTime.size() == 0)
             throw new TimeseriesException("cannot insert datapoint into tree as there's no child block");
 

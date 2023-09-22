@@ -10,7 +10,7 @@ import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 import java.util.ArrayList;
 
 public abstract class StatsBlock extends ArcadeDocument{
-    public static final int DEFAULT_TREE_DEGREE = 10;
+    public static final int DEFAULT_TREE_DEGREE = 32;
     public static final int MAX_DATA_BLOCK_SIZE = 4096;
     public static final String PREFIX_STATSBLOCK = "_stat_";
 
@@ -136,7 +136,7 @@ public abstract class StatsBlock extends ArcadeDocument{
      * @param data the data point to insert
      * @throws TimeseriesException
      */
-    public abstract void insert(DataPoint data, TSUpdateStrategy strategy) throws TimeseriesException;
+    public abstract void insert(DataPoint data, UpdateStrategy strategy) throws TimeseriesException;
 
     // append statistics of out-of-order data point
     public abstract void appendStats(DataPoint data) throws TimeseriesException;

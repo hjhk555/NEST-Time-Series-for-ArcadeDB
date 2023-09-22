@@ -2,7 +2,7 @@ package nju.hjh.arcadedb.timeseries.datapoint;
 
 import com.arcadedb.database.Binary;
 import nju.hjh.arcadedb.timeseries.MathUtils;
-import nju.hjh.arcadedb.timeseries.TSUpdateStrategy;
+import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
@@ -22,7 +22,7 @@ public class StringDataPoint extends DataPoint{
     }
 
     @Override
-    public DataPoint getUpdatedDataPoint(DataPoint income, TSUpdateStrategy strategy) throws TimeseriesException {
+    public DataPoint getUpdatedDataPoint(DataPoint income, UpdateStrategy strategy) throws TimeseriesException {
         if (income.timestamp != this.timestamp){
             throw new TimeseriesException("updating data point with different timestamp");
         }

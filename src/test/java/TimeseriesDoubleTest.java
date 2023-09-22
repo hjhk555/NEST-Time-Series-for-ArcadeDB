@@ -4,13 +4,11 @@ import com.arcadedb.graph.Vertex;
 import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
 import nju.hjh.arcadedb.timeseries.DataType;
-import nju.hjh.arcadedb.timeseries.TSUpdateStrategy;
+import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.DoubleDataPoint;
-import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.DoubleStatistics;
-import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
 
 import java.util.Random;
 
@@ -57,7 +55,7 @@ public class TimeseriesDoubleTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.DOUBLE, new DoubleDataPoint(i, i/16.0), TSUpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.DOUBLE, new DoubleDataPoint(i, i/16.0), UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();

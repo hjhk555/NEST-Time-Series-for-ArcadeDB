@@ -5,13 +5,11 @@ import indi.hjhk.exception.ExceptionSerializer;
 import indi.hjhk.log.Logger;
 import nju.hjh.arcadedb.timeseries.DataPointSet;
 import nju.hjh.arcadedb.timeseries.DataType;
-import nju.hjh.arcadedb.timeseries.TSUpdateStrategy;
+import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
-import nju.hjh.arcadedb.timeseries.statistics.StringStatistics;
-import nju.hjh.arcadedb.timeseries.statistics.UnfixedStatistics;
 
 import java.util.ArrayList;
 import java.util.Random;
@@ -81,7 +79,7 @@ public class TimeseriesAppendTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.STRING, new StringDataPoint(i/10, strList.get(i)), TSUpdateStrategy.APPEND);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.STRING, new StringDataPoint(i/10, strList.get(i)), UpdateStrategy.APPEND);
             }
 
             tsEngine.commit();

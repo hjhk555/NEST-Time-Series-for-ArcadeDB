@@ -77,7 +77,7 @@ public class TimeseriesStringTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.STRING, strLen), new StringDataPoint(i, strList.get(i)), TSUpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex, "status", new DataType(DataType.BaseType.STRING, strLen), new StringDataPoint(i, strList.get(i)), UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();

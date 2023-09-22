@@ -54,7 +54,7 @@ public class TimeseriesInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), TSUpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();
