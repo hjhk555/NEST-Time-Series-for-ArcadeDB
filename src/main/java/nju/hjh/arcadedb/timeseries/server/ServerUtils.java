@@ -5,6 +5,8 @@ public class ServerUtils {
     public static final int SHOW_MESSAGE_LENGTH = 1000;
     public static final String DATABASE_DIR = "./databases/";
     public static final String CONNECTION_CLOSE = "close";
+    public static final long MAX_LIMIT_QUERY_LISTALL = 1000;
+    public static final long MAX_LIMIT_QUERY_OBJECTS = 100;
 
     // message key
     public static class Key {

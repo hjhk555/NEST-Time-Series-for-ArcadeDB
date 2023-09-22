@@ -100,7 +100,7 @@ public class ArcadedbUtils {
                 Optional<Vertex> optVertex = rs.next().getVertex();
                 if (optVertex.isEmpty()) continue;
                 Vertex vertex = optVertex.get();
-                if (vertex.propertiesAsMap().size() == tags.size()) return vertex;
+                if (vertex.toMap(false).size() == tags.size()) return vertex;
             }
         }
 
@@ -133,13 +133,14 @@ public class ArcadedbUtils {
             Optional<Vertex> optVertex = rs.next().getVertex();
             if (optVertex.isEmpty()) continue;
             Vertex vertex = optVertex.get();
-            if (vertex.propertiesAsMap().size() == tags.size()) return vertex;
+            if (vertex.toMap(false).size() == tags.size()) return vertex;
         }
 
         throw new TargetNotFoundException("object vertex under given tags not found");
     }
 
-    public static List<Vertex> getVertices(Database database, String objectType, Map<String, String> tags) throws TimeseriesException {
+
+    public static ResultSet getVertices(Database database, String objectType, Map<String, String> tags) throws TimeseriesException {
         if (!database.getSchema().existsType(objectType))
             throw new TargetNotFoundException("objectType not exist");
 
@@ -151,12 +152,7 @@ public class ArcadedbUtils {
         } catch (CommandSQLParsingException e) {
             throw new SQLParsingException("error parsing SQL " + sql);
         }
-        while (rs.hasNext()){
-            Optional<Vertex> optVertex = rs.next().getVertex();
-            if (optVertex.isEmpty()) continue;
-            vertices.add(optVertex.get());
-        }
-        return vertices;
+        return rs;
     }
 
     private static String getQuerySql(String metric, Map<String, String> tags){
