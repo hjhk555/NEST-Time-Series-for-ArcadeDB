@@ -15,7 +15,7 @@ public class ArcadeVertexManager {
     public static final int INIT_CACHE_SIZE = 64;
 
     // created instances of ArcadeVertexManager
-    public static HashMap<Database, ArcadeVertexManager> managerInstances = new HashMap<>();
+    public static final HashMap<Database, ArcadeVertexManager> managerInstances = new HashMap<>();
     // arcadeDB database
     public Database database;
     // null RID
@@ -40,11 +40,16 @@ public class ArcadeVertexManager {
     }
 
     public static ArcadeVertexManager getInstance(Database database){
-        ArcadeVertexManager manager = managerInstances.get(database);
-        if (manager != null) return manager;
-        manager = new ArcadeVertexManager(database);
-        managerInstances.put(database, manager);
-        return manager;
+        synchronized (managerInstances) {
+            ArcadeVertexManager manager = managerInstances.get(database);
+            if (manager != null) {
+                // check if manager has same database
+                if (manager.database == database) return manager;
+            }
+            manager = new ArcadeVertexManager(database);
+            managerInstances.put(database, manager);
+            return manager;
+        }
     }
 
     public RID getRID(int bucketId, long offset){

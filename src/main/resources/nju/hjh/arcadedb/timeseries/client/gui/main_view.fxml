@@ -6,23 +6,39 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
 <HBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="490.0" prefWidth="714.0" spacing="20.0" xmlns="http://javafx.com/javafx/20.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="nju.hjh.arcadedb.timeseries.client.gui.MainControl">
    <children>
       <BorderPane maxWidth="Infinity" prefHeight="200.0" prefWidth="200.0" HBox.hgrow="ALWAYS">
          <center>
-            <TextArea fx:id="txtSend" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+            <TextArea fx:id="txtSend" prefHeight="365.0" prefWidth="337.0" BorderPane.alignment="CENTER">
                <font>
                   <Font size="14.0" />
                </font></TextArea>
          </center>
          <top>
-            <Label maxHeight="20.0" prefHeight="20.0" prefWidth="300.0" text="发送到服务器（使用Alt+Enter快捷发送）：" BorderPane.alignment="CENTER_LEFT">
+            <VBox prefHeight="96.0" prefWidth="337.0" spacing="10.0" BorderPane.alignment="CENTER_LEFT">
                <BorderPane.margin>
                   <Insets bottom="10.0" top="10.0" />
                </BorderPane.margin>
-            </Label>
+               <children>
+                  <Label text="发送到服务器：">
+                     <VBox.margin>
+                        <Insets />
+                     </VBox.margin>
+                  </Label>
+                  <Label text="Alt+Enter：快捷发送" textFill="ORANGE" />
+                  <Label text="Alt+←/→：查看发送历史" textFill="ORANGE" />
+                  <HBox>
+                     <children>
+                        <Label text="当前记录编号：#" />
+                        <Label fx:id="txtHistoryIndex" text="0" textFill="RED" />
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
          </top>
          <bottom>
             <Button fx:id="btnSend" mnemonicParsing="false" onAction="#btnSend_clicked" text="  发送  " BorderPane.alignment="CENTER">

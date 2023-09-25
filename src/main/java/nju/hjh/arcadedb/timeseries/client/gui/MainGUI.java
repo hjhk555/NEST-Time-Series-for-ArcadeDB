@@ -11,10 +11,14 @@ import javafx.scene.input.KeyCombination;
 import javafx.stage.Stage;
 import nju.hjh.arcadedb.timeseries.client.ArcadeTSDBClient;
 
+import java.util.ArrayList;
+
 public class MainGUI extends Application {
     private ArcadeTSDBClient client = new ArcadeTSDBClient();
     private MainControl mainControl;
     public Scene mainScene;
+    public ArrayList<String> history;
+    public int curHistoryIndex;
 
     @Override
     public void init() throws Exception {
@@ -23,6 +27,9 @@ public class MainGUI extends Application {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             client.close();
         }));
+
+        history = new ArrayList<>();
+        curHistoryIndex = -1;
     }
 
     @Override
@@ -39,12 +46,25 @@ public class MainGUI extends Application {
         mainControl = fxmlLoader.getController();
         mainControl.init(this);
 
-        // quick send message using Alt+Enter
-        KeyCombination CtrlEnter = new KeyCodeCombination(KeyCode.ENTER, KeyCombination.ALT_DOWN);
-        mainScene.getAccelerators().put(CtrlEnter, new Runnable() {
+        // quick send message
+        mainScene.getAccelerators().put(new KeyCodeCombination(KeyCode.ENTER, KeyCombination.ALT_DOWN), new Runnable() {
             @Override
             public void run() {
                 mainControl.btnSend.fire();
+            }
+        });
+
+        // hsitory access
+        mainScene.getAccelerators().put(new KeyCodeCombination(KeyCode.LEFT, KeyCombination.ALT_DOWN), new Runnable() {
+            @Override
+            public void run() {
+                loadPrevHistory();
+            }
+        });
+        mainScene.getAccelerators().put(new KeyCodeCombination(KeyCode.RIGHT, KeyCombination.ALT_DOWN), new Runnable() {
+            @Override
+            public void run() {
+                loadNextHistory();
             }
         });
 
@@ -58,6 +78,26 @@ public class MainGUI extends Application {
 
     public String sendMsgAndWaitResult(JSONObject msgObject){
         return client.sendJsonAndWaitResult(msgObject);
+    }
+
+    public void loadPrevHistory(){
+        if (curHistoryIndex <= 0) return;
+        curHistoryIndex--;
+        mainControl.txtSend.setText(history.get(curHistoryIndex));
+        mainControl.txtHistoryIndex.setText(String.valueOf(curHistoryIndex));
+    }
+
+    public void loadNextHistory(){
+        if (curHistoryIndex >= history.size()-1) return;
+        curHistoryIndex++;
+        mainControl.txtSend.setText(history.get(curHistoryIndex));
+        mainControl.txtHistoryIndex.setText(String.valueOf(curHistoryIndex));
+    }
+
+    public void recordHistory(String message){
+        history.add(message);
+        curHistoryIndex = history.size()-1;
+        mainControl.txtHistoryIndex.setText(String.valueOf(curHistoryIndex));
     }
 
     public static void main(String[] args) {

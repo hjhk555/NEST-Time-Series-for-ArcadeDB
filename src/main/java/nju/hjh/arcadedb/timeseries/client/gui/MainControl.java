@@ -14,10 +14,45 @@ public class MainControl {
     public TextArea txtReceive;
     public TextArea txtSend;
     public Button btnSend;
+    public Label txtHistoryIndex;
     private MainGUI mainGUI;
 
     public void init(MainGUI mainGUI){
         this.mainGUI = mainGUI;
+        txtHistoryIndex.setText("NEW");
+    }
+
+    private int getLineIndex(String content, int caretPosition){
+        int curLine = 0;
+        String beforeCaret = content.substring(0, caretPosition);
+        int curIndex = beforeCaret.indexOf('\n');
+        while (curIndex != -1){
+            curLine++;
+            curIndex = beforeCaret.indexOf('\n', curIndex+1);
+        }
+        return curLine;
+    }
+
+    private int getLineEndCaretPos(String content, int lineIndex){
+        int caretPos = -1;
+        for (int i=0; i<=lineIndex; i++){
+            int nextPos = content.indexOf('\n', caretPos+1);
+            if (nextPos == -1){
+                caretPos = content.length();
+                break;
+            }
+            caretPos = nextPos;
+        }
+        return caretPos;
+    }
+
+    private String formatSendText(String newText){
+        int lineIndex = getLineIndex(txtSend.getText(), txtSend.getCaretPosition());
+        String msgFormat = ClientUtils.toPrettyPrintJSON(newText);
+
+        txtSend.setText(msgFormat);
+        txtSend.positionCaret(getLineEndCaretPos(msgFormat, lineIndex));
+        return msgFormat;
     }
 
     public void btnSend_clicked(ActionEvent actionEvent) {
@@ -26,29 +61,10 @@ public class MainControl {
             jsonMsg = JSONObject.parseObject(txtSend.getText());
         }catch (JSONException e){
             txtReceive.setText(ExceptionSerializer.serializeAll(e));
+            mainGUI.recordHistory(formatSendText(txtSend.getText()));
             return;
         }
-
-        // format user input
-        String beforeCaret = txtSend.getText(0, txtSend.getCaretPosition());
-        int curLine = 0;
-        int curIndex = beforeCaret.indexOf('\n');
-        while (curIndex != -1){
-            curLine++;
-            curIndex = beforeCaret.indexOf('\n', curIndex+1);
-        }
-        String prettyJson = ClientUtils.toPrettyPrintJSON(jsonMsg.toJSONString());
-        int newCaretPos = -1;
-        for (int i=0; i<=curLine; i++){
-            int nextPos = prettyJson.indexOf('\n', newCaretPos+1);
-            if (nextPos == -1){
-                newCaretPos = prettyJson.length();
-                break;
-            }
-            newCaretPos = nextPos;
-        }
-        txtSend.setText(prettyJson);
-        txtSend.positionCaret(newCaretPos);
+        mainGUI.recordHistory(formatSendText(jsonMsg.toJSONString()));
 
         long begin = System.currentTimeMillis();
         String msgRet = mainGUI.sendMsgAndWaitResult(jsonMsg);

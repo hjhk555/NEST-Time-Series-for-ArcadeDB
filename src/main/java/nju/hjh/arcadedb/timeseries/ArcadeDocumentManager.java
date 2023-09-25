@@ -15,7 +15,7 @@ public class ArcadeDocumentManager {
     public static final int INIT_CACHE_SIZE = 64;
 
     // created instances of ArcadeDocumentManager
-    public static HashMap<Database, ArcadeDocumentManager> managerInstances = new HashMap<>();
+    public static final HashMap<Database, ArcadeDocumentManager> managerInstances = new HashMap<>();
     // arcadeDB database
     public Database database;
     // null RID
@@ -40,11 +40,16 @@ public class ArcadeDocumentManager {
     }
 
     public static ArcadeDocumentManager getInstance(Database database){
-        ArcadeDocumentManager manager = managerInstances.get(database);
-        if (manager != null) return manager;
-        manager = new ArcadeDocumentManager(database);
-        managerInstances.put(database, manager);
-        return manager;
+        synchronized (managerInstances) {
+            ArcadeDocumentManager manager = managerInstances.get(database);
+            if (manager != null) {
+                // check if manager has same database
+                if (manager.database == database) return manager;
+            }
+            manager = new ArcadeDocumentManager(database);
+            managerInstances.put(database, manager);
+            return manager;
+        }
     }
 
     public RID getRID(int bucketId, long offset){

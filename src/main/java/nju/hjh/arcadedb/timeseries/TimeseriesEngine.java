@@ -21,7 +21,7 @@ public class TimeseriesEngine {
     public final ArcadeDocumentManager manager;
 
     // created instances of TimeseriesEngine
-    public static HashMap<Database, TimeseriesEngine> engineInstances = new HashMap<>();
+    public static final HashMap<Database, TimeseriesEngine> engineInstances = new HashMap<>();
 
     public TimeseriesEngine(Database database) {
         this.database = database;
@@ -29,11 +29,16 @@ public class TimeseriesEngine {
     }
 
     public static TimeseriesEngine getInstance(Database database){
-        TimeseriesEngine engine = engineInstances.get(database);
-        if (engine != null) return engine;
-        engine = new TimeseriesEngine(database);
-        engineInstances.put(database, engine);
-        return engine;
+        synchronized (engineInstances) {
+            TimeseriesEngine engine = engineInstances.get(database);
+            if (engine != null) {
+                // check if engine has same database
+                if (engine.database == database) return engine;
+            }
+            engine = new TimeseriesEngine(database);
+            engineInstances.put(database, engine);
+            return engine;
+        }
     }
 
     public Set<String> getAllMetrics(Vertex object){

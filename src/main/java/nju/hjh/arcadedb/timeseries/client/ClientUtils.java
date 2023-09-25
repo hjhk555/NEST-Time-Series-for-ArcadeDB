@@ -37,6 +37,10 @@ public class ClientUtils {
                         strBuilder.append('\n').append(prefix);
                     }
                 }
+                case '\n','\t',' ' -> {
+                    // ignore empty characters outside string
+                    if (insideString) strBuilder.append(ch);
+                }
                 default -> strBuilder.append(ch);
             }
             if (trope)
