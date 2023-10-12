@@ -4,11 +4,9 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
-import com.arcadedb.exception.CommandSQLParsingException;
 import com.arcadedb.graph.MutableVertex;
 import com.arcadedb.graph.Vertex;
 import com.arcadedb.query.sql.executor.ResultSet;
-import com.arcadedb.query.sql.parser.Limit;
 import nju.hjh.arcadedb.timeseries.*;
 import nju.hjh.arcadedb.timeseries.datapoint.*;
 import nju.hjh.arcadedb.timeseries.exception.*;
@@ -21,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -93,7 +90,7 @@ public class ArcadeTSDBWorker implements Runnable {
                 if (msg == null) {
                     Thread.sleep(1);
                 } else {
-                    logger.logOnStdout("msg received: %s", (msg.length() > ServerUtils.SHOW_MESSAGE_LENGTH ? msg.substring(0, ServerUtils.SHOW_MESSAGE_LENGTH) + " ...(total " + msg.length() + " characters)" : msg));
+                    //logger.logOnStdout("msg received: %s", (msg.length() > ServerUtils.SHOW_MESSAGE_LENGTH ? msg.substring(0, ServerUtils.SHOW_MESSAGE_LENGTH) + " ...(total " + msg.length() + " characters)" : msg));
                     if (msg.equals(ServerUtils.CONNECTION_CLOSE))
                         break;
 
@@ -154,7 +151,7 @@ public class ArcadeTSDBWorker implements Runnable {
                     if (query == null)
                         throw new MissingFieldException(ServerUtils.Key.IN_QUERY);
 
-                    Database database = ArcadedbUtils.getOrCreateDatabase(dbName);
+                    Database database = ArcadedbUtils.getDatabase(dbName);
                     return handleQuery(database, query);
                 }
                 default -> throw new MessageParsingException("invalid action type '" + action + "'");
@@ -264,67 +261,31 @@ public class ArcadeTSDBWorker implements Runnable {
                             }
                         }
                     }
-                    JSONObject timeseries = insert.getJSONObject(ServerUtils.Key.INSERT_TIMESERIES);
-                    if (timeseries == null)
-                        throw new MissingFieldException(ServerUtils.Key.INSERT_TIMESERIES, String.format("insert#%d", insertIndex));
 
                     // get object
                     MutableVertex object = ArcadedbUtils.getOrCreateSingleVertex(database, objectType, tags).modify();
 
-                    for (String metricName : timeseries.keySet()) {
-                        JSONObject timeValue = timeseries.getJSONObject(metricName);
-                        if (timeValue == null)
-                            throw new MessageParsingException(String.format("cannot parse insert#%d.%s as json object", insertIndex, metricName));
+                    String format = insert.getString(ServerUtils.Key.INSERT_TIMESERIES_FORMAT);
+                    if (format == null)
+                        throw new MissingFieldException(ServerUtils.Key.INSERT_TIMESERIES_FORMAT, String.format("insert#%d", insertIndex));
 
-                        JSONArray timestamps = timeValue.getJSONArray(ServerUtils.Key.TIMESERIES_TIMESTAMP);
-                        if (timestamps == null)
-                            throw new MissingFieldException(ServerUtils.Key.TIMESERIES_TIMESTAMP, String.format("insert#%d.%s", insertIndex, metricName));
+                    switch (format) {
+                        case ServerUtils.Value.TIMESERIES_FORMAT_DATAPOINT -> {
+                            JSONArray datapoints = insert.getJSONArray(ServerUtils.Key.INSERT_TIMESERIES);
+                            if (datapoints == null)
+                                throw new MissingFieldException(ServerUtils.Key.INSERT_TIMESERIES, String.format("insert#%d", insertIndex));
 
-                        JSONArray values = timeValue.getJSONArray(ServerUtils.Key.TIMESERIES_VALUE);
-                        if (values == null)
-                            throw new MissingFieldException(ServerUtils.Key.TIMESERIES_VALUE, String.format("insert#%d.%s", insertIndex, metricName));
-
-                        long metricSize = timestamps.size();
-
-                        if (metricSize != values.size())
-                            throw new MessageParsingException("timestamp and value have different size at insert#" + insertIndex + "." + metricName);
-
-                        for (int metricIndex = 0; metricIndex < metricSize; metricIndex++) {
-                            long timestamp = timestamps.getLongValue(metricIndex);
-                            Object value = values.get(metricIndex);
-                            DataPoint dataPoint;
-                            DataType dataType;
-                            if (value instanceof Number numVal) {
-                                if (numVal instanceof BigDecimal) {
-                                    dataType = DataType.DOUBLE;
-                                    dataPoint = new DoubleDataPoint(timestamp, numVal.doubleValue());
-                                } else {
-                                    dataType = DataType.LONG;
-                                    dataPoint = new LongDataPoint(timestamp, numVal.longValue());
-                                }
-                            } else if (value instanceof String strVal) {
-                                dataType = DataType.STRING;
-                                dataPoint = new StringDataPoint(timestamp, strVal);
-                            } else {
-                                throw new MessageParsingException(String.format("unsupported data type at insert#%d.%s[%d]", insertIndex, metricName, metricIndex));
-                            }
-
-                            try {
-                                UpdateStrategy strategy = strategyMap.get(metricName);
-                                if (strategy == null)
-                                    strategy = UpdateStrategy.IGNORE;
-                                tsEngine.insertDataPoint(object, metricName, dataType, dataPoint, strategy);
-                            } catch (TimeseriesException e) {
-                                // repack exception
-                                Constructor<? extends Exception> constructor;
-                                try {
-                                    constructor = e.getClass().getConstructor(String.class);
-                                } catch (Exception ignored) {
-                                    throw e;
-                                }
-                                throw constructor.newInstance(String.format("%s%s:%s@%d: %s", objectType, getTagDetail(tags), metricName, timestamp, e.getMessage()));
-                            }
+                            insertDatapointFormatTimeseries(tsEngine, object, datapoints, strategyMap, insertIndex, objectType, tags);
                         }
+                        case ServerUtils.Value.TIMESERIES_FORMAT_TIMEVALUE_ARRAY -> {
+                            JSONObject metrics = insert.getJSONObject(ServerUtils.Key.INSERT_TIMESERIES);
+                            if (metrics == null)
+                                throw new MissingFieldException(ServerUtils.Key.INSERT_TIMESERIES, String.format("insert#%d", insertIndex));
+
+                            insertArrayFormatTimeseries(tsEngine, object, metrics, strategyMap, insertIndex, objectType, tags);
+                        }
+                        default ->
+                                throw new MessageParsingException(String.format("unsupported timeseries format at insert#%d", insertIndex));
                     }
                 }
 
@@ -338,6 +299,124 @@ public class ArcadeTSDBWorker implements Runnable {
         JSONObject jsonRes = new JSONObject();
         jsonRes.put(ServerUtils.Key.OUT_SUCCESS, true);
         return jsonRes;
+    }
+
+    public void insertArrayFormatTimeseries(TimeseriesEngine tsEngine, Vertex object, JSONObject metrics, Map<String, UpdateStrategy> strategyMap,
+                                            int insertIndex, String objectType, Map<String, String> tags) throws Exception {
+        for (String metricName : metrics.keySet()) {
+            JSONObject timeValue = metrics.getJSONObject(metricName);
+            if (timeValue == null)
+                throw new MessageParsingException(String.format("cannot parse insert#%d.%s as json object", insertIndex, metricName));
+
+            JSONArray timestamps = timeValue.getJSONArray(ServerUtils.Key.TIMESERIES_TIMESTAMP);
+            if (timestamps == null)
+                throw new MissingFieldException(ServerUtils.Key.TIMESERIES_TIMESTAMP, String.format("insert#%d.%s", insertIndex, metricName));
+
+            JSONArray values = timeValue.getJSONArray(ServerUtils.Key.TIMESERIES_VALUE);
+            if (values == null)
+                throw new MissingFieldException(ServerUtils.Key.TIMESERIES_VALUE, String.format("insert#%d.%s", insertIndex, metricName));
+
+            long metricSize = timestamps.size();
+
+            if (metricSize != values.size())
+                throw new MessageParsingException("timestamp and value have different size at insert#" + insertIndex + "." + metricName);
+
+            for (int metricIndex = 0; metricIndex < metricSize; metricIndex++) {
+                Long timestamp = timestamps.getLong(metricIndex);
+                if (timestamp == null) continue;
+                Object value = values.get(metricIndex);
+                if (value == null) continue;
+
+                DataPoint dataPoint;
+                DataType dataType;
+                if (value instanceof Number numVal) {
+                    if (numVal instanceof BigDecimal) {
+                        dataType = DataType.DOUBLE;
+                        dataPoint = new DoubleDataPoint(timestamp, numVal.doubleValue());
+                    } else {
+                        dataType = DataType.LONG;
+                        dataPoint = new LongDataPoint(timestamp, numVal.longValue());
+                    }
+                } else if (value instanceof String strVal) {
+                    dataType = DataType.STRING;
+                    dataPoint = new StringDataPoint(timestamp, strVal);
+                } else {
+                    throw new MessageParsingException(String.format("unsupported value(=%s) at insert#%d.%s[%d]", value, insertIndex, metricName, metricIndex));
+                }
+
+                try {
+                    UpdateStrategy strategy = strategyMap.get(metricName);
+                    if (strategy == null)
+                        strategy = UpdateStrategy.IGNORE;
+                    tsEngine.insertDataPoint(object, metricName, dataType, dataPoint, strategy);
+                } catch (TimeseriesException e) {
+                    // repack exception
+                    Constructor<? extends Exception> constructor;
+                    try {
+                        constructor = e.getClass().getConstructor(String.class);
+                    } catch (Exception ignored) {
+                        throw e;
+                    }
+                    throw constructor.newInstance(String.format("%s%s:%s@%d: %s", objectType, getTagDetail(tags), metricName, timestamp, e.getMessage()));
+                }
+            }
+        }
+    }
+
+    public void insertDatapointFormatTimeseries(TimeseriesEngine tsEngine, Vertex object, JSONArray datapoints, Map<String, UpdateStrategy> strategyMap,
+                                                int insertIndex, String objectType, Map<String, String> tags) throws Exception {
+        for (int dpIndex = 0; dpIndex < datapoints.size(); dpIndex++) {
+            JSONObject datapoint = datapoints.getJSONObject(dpIndex);
+            if (datapoint == null)
+                throw new MessageParsingException(String.format("cannot parse insert#%d[%d] as json object", insertIndex, dpIndex));
+
+            Long timestamp = datapoint.getLong(ServerUtils.Key.TIMESERIES_TIMESTAMP);
+            if (timestamp == null)
+                throw new MissingFieldException(ServerUtils.Key.TIMESERIES_TIMESTAMP, String.format("insert#%d[%d]", insertIndex, dpIndex));
+
+            JSONObject metrics = datapoint.getJSONObject(ServerUtils.Key.TIMESERIES_VALUE);
+            if (metrics == null)
+                throw new MissingFieldException(ServerUtils.Key.TIMESERIES_VALUE, String.format("insert#%d[%d]", insertIndex, dpIndex));
+
+            for (Map.Entry<String, Object> metric : metrics.entrySet()) {
+                String metricName = metric.getKey();
+                Object value = metric.getValue();
+                if (value == null) continue;
+
+                DataPoint dataPoint;
+                DataType dataType;
+                if (value instanceof Number numVal) {
+                    if (numVal instanceof BigDecimal) {
+                        dataType = DataType.DOUBLE;
+                        dataPoint = new DoubleDataPoint(timestamp, numVal.doubleValue());
+                    } else {
+                        dataType = DataType.LONG;
+                        dataPoint = new LongDataPoint(timestamp, numVal.longValue());
+                    }
+                } else if (value instanceof String strVal) {
+                    dataType = DataType.STRING;
+                    dataPoint = new StringDataPoint(timestamp, strVal);
+                } else {
+                    throw new MessageParsingException(String.format("unsupported value(=%s) at insert#%d[%d].%s", value, insertIndex, dpIndex, metricName));
+                }
+
+                try {
+                    UpdateStrategy strategy = strategyMap.get(metricName);
+                    if (strategy == null)
+                        strategy = UpdateStrategy.IGNORE;
+                    tsEngine.insertDataPoint(object, metricName, dataType, dataPoint, strategy);
+                } catch (TimeseriesException e) {
+                    // repack exception
+                    Constructor<? extends Exception> constructor;
+                    try {
+                        constructor = e.getClass().getConstructor(String.class);
+                    } catch (Exception ignored) {
+                        throw e;
+                    }
+                    throw constructor.newInstance(String.format("%s%s:%s@%d: %s", objectType, getTagDetail(tags), metricName, timestamp, e.getMessage()));
+                }
+            }
+        }
     }
 
     public JSONObject handleQuery(Database database, JSONObject query) throws TimeseriesException {

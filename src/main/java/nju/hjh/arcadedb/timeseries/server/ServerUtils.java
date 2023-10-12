@@ -20,7 +20,7 @@ public class ServerUtils {
         public final static String STRATEGY_SEPARATOR = "sep";
         public final static String INSERT_QUERY_OBJECT = "obj";
         public final static String INSERT_QUERY_TAG = "tag";
-        public final static String INSERT_QUERY_AS = "as";
+        public final static String INSERT_TIMESERIES_FORMAT = "fmt";
         public final static String INSERT_TIMESERIES = "ts";
         public final static String TIMESERIES_TIMESTAMP = "t";
         public final static String TIMESERIES_VALUE = "v";
@@ -54,6 +54,8 @@ public class ServerUtils {
         public final static String MANAGE_TYPE_CREATE = "create";
         public final static String MANAGE_TYPE_DROP = "drop";
         public final static String MANAGE_TYPE_EXIST = "exist";
+        public final static String TIMESERIES_FORMAT_DATAPOINT = "point";
+        public final static String TIMESERIES_FORMAT_TIMEVALUE_ARRAY = "array";
         public final static boolean DEFAULT_QUERY_MULTIPLE = false;
         public final static String QUERY_TYPE_OBJECTS = "objects";
         public final static String QUERY_TYPE_METRICS = "metrics";

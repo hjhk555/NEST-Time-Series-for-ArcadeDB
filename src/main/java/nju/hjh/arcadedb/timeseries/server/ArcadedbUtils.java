@@ -10,7 +10,7 @@ import com.arcadedb.schema.Property;
 import com.arcadedb.schema.Schema;
 import com.arcadedb.schema.Type;
 import com.arcadedb.schema.VertexType;
-import nju.hjh.arcadedb.timeseries.exception.DatabaseManageException;
+import nju.hjh.arcadedb.timeseries.exception.DatabaseException;
 import nju.hjh.arcadedb.timeseries.exception.SQLParsingException;
 import nju.hjh.arcadedb.timeseries.exception.TargetNotFoundException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
@@ -21,11 +21,12 @@ public class ArcadedbUtils {
     public static final HashMap<String, Database> databaseInstances = new HashMap<>();
 
     /**
-     * get database instance
+     * get database instance, if not exist, create one
+     *
      * @param dbName name of database
      * @return database instance
      */
-    public static Database getOrCreateDatabase(String dbName){
+    public static Database getOrCreateDatabase(String dbName) {
         synchronized (databaseInstances) {
             Database database = databaseInstances.get(dbName);
             if (database != null) return database;
@@ -40,29 +41,37 @@ public class ArcadedbUtils {
         }
     }
 
-    public static Database createDatabase(String dbName) throws DatabaseManageException {
+    public static Database getDatabase(String dbName) throws DatabaseException {
+        synchronized (databaseInstances) {
+            Database database = databaseInstances.get(dbName);
+            if (database != null) return database;
+            throw new DatabaseException("database '" + dbName + "' not exists");
+        }
+    }
+
+    public static Database createDatabase(String dbName) throws DatabaseException {
         synchronized (databaseInstances) {
             DatabaseFactory dbf = new DatabaseFactory(ServerUtils.DATABASE_DIR + dbName);
             if (dbf.exists())
-                throw new DatabaseManageException("database " + dbName + " already exists");
+                throw new DatabaseException("database '" + dbName + "' already exists");
             Database newDatabase = dbf.create();
             databaseInstances.put(dbName, newDatabase);
             return newDatabase;
         }
     }
 
-    public static void dropDatabase(String dbName) throws DatabaseManageException {
-        synchronized (databaseInstances){
+    public static void dropDatabase(String dbName) throws DatabaseException {
+        synchronized (databaseInstances) {
             Database activeDatabase = databaseInstances.get(dbName);
-            if (activeDatabase != null){
-                synchronized (activeDatabase){
+            if (activeDatabase != null) {
+                synchronized (activeDatabase) {
                     activeDatabase.drop();
                     databaseInstances.remove(dbName);
                 }
-            }else{
+            } else {
                 DatabaseFactory dbf = new DatabaseFactory(ServerUtils.DATABASE_DIR + dbName);
                 if (!dbf.exists())
-                    throw new DatabaseManageException("database "+ dbName + " not exists");
+                    throw new DatabaseException("database '" + dbName + "' not exists");
                 dbf.open().drop();
             }
         }
@@ -70,6 +79,7 @@ public class ArcadedbUtils {
 
     /**
      * use between begin and commit
+     *
      * @param tags tags appended to objectType
      * @return vertex asked
      */
@@ -106,7 +116,7 @@ public class ArcadedbUtils {
 
         // create new vertex
         MutableVertex newVertex = database.newVertex(objectType);
-        for (Map.Entry<String, String> entry : tags.entrySet()){
+        for (Map.Entry<String, String> entry : tags.entrySet()) {
             newVertex.set(entry.getKey(), entry.getValue());
         }
         newVertex.save();
@@ -115,6 +125,7 @@ public class ArcadedbUtils {
 
     /**
      * use between begin and commit
+     *
      * @param tags tags appended to objectType
      * @return vertex asked
      */
@@ -129,7 +140,7 @@ public class ArcadedbUtils {
         } catch (CommandSQLParsingException e) {
             throw new SQLParsingException("error parsing SQL " + sql);
         }
-        while (rs.hasNext()){
+        while (rs.hasNext()) {
             Optional<Vertex> optVertex = rs.next().getVertex();
             if (optVertex.isEmpty()) continue;
             Vertex vertex = optVertex.get();
@@ -155,7 +166,7 @@ public class ArcadedbUtils {
         return rs;
     }
 
-    private static String getQuerySql(String metric, Map<String, String> tags){
+    private static String getQuerySql(String metric, Map<String, String> tags) {
         StringBuilder sqlBuilder = new StringBuilder(String.format("SELECT FROM %s", metric));
         if (!tags.isEmpty()) {
             boolean firstTag = true;
