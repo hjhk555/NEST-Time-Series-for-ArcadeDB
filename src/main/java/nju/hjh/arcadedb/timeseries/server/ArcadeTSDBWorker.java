@@ -200,7 +200,7 @@ public class ArcadeTSDBWorker implements Runnable {
     }
 
     private String getTagDetail(Map<String, String> tags) {
-        if (tags == null || tags.isEmpty()) return "";
+        if (tags == null || tags.isEmpty()) return "()";
         StringBuilder tagDetail = new StringBuilder();
         boolean isFirstTag = true;
         for (Map.Entry<String, String> tag : tags.entrySet()) {
@@ -514,8 +514,8 @@ public class ArcadeTSDBWorker implements Runnable {
                     switch (queryType) {
                         case ServerUtils.Value.METRIC_QUERY_TYPE_LISTALL -> {
                             Long limit = jsonQuery.getLong(ServerUtils.Key.QUERY_LIMIT);
-                            if (limit == null || limit > 1000)
-                                limit = 1000L;
+                            if (limit == null || limit > ServerUtils.MAX_LIMIT_QUERY_LISTALL)
+                                limit = ServerUtils.MAX_LIMIT_QUERY_LISTALL;
                             if (limit <= 0)
                                 throw new MessageParsingException("limit should be positive");
 
@@ -653,18 +653,7 @@ public class ArcadeTSDBWorker implements Runnable {
                         Vertex object = objects.next().getVertex().orElse(null);
                         if (object == null) continue;
 
-                        StringBuilder taggedObjectBuilder = new StringBuilder(objectType);
-                        Map<String, Object> objectTags = object.toMap(false);
-                        if (objectTags.size() == 0) taggedObjectBuilder.append("()");
-                        else {
-                            boolean isFirstTag = true;
-                            for (Map.Entry<String, Object> tag : objectTags.entrySet()) {
-                                taggedObjectBuilder.append(isFirstTag ? "(" : ",").append(String.format("%s=%s", tag.getKey(), tag.getValue().toString()));
-                                isFirstTag = false;
-                            }
-                            taggedObjectBuilder.append(")");
-                        }
-                        objectList.add(taggedObjectBuilder.toString());
+                        objectList.add(objectType + getTagDetail(ArcadedbUtils.getTags(object)));
                         count++;
                     }
                     jsonResult.put(ServerUtils.Key.OUT_RESULT, objectList);

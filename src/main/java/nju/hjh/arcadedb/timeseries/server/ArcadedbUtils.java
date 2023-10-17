@@ -18,6 +18,8 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import java.util.*;
 
 public class ArcadedbUtils {
+    public static final String PREFIX_TAG = "_t";
+    public static final String PREFIX_PROPERTY = "_p";
     public static final HashMap<String, Database> databaseInstances = new HashMap<>();
 
     /**
@@ -90,9 +92,9 @@ public class ArcadedbUtils {
 
         // check tags as properties
         for (String tagKey : tags.keySet()) {
-            if (!metricVertex.existsProperty(tagKey)) {
+            if (!metricVertex.existsProperty(PREFIX_TAG+tagKey)) {
                 isNewVertex = true;
-                Property newKey = metricVertex.createProperty(tagKey, Type.STRING);
+                Property newKey = metricVertex.createProperty(PREFIX_TAG+tagKey, Type.STRING);
                 newKey.createIndex(Schema.INDEX_TYPE.LSM_TREE, false);
             }
         }
@@ -110,14 +112,14 @@ public class ArcadedbUtils {
                 Optional<Vertex> optVertex = rs.next().getVertex();
                 if (optVertex.isEmpty()) continue;
                 Vertex vertex = optVertex.get();
-                if (vertex.toMap(false).size() == tags.size()) return vertex;
+                if (getTags(vertex).size() == tags.size()) return vertex;
             }
         }
 
         // create new vertex
         MutableVertex newVertex = database.newVertex(objectType);
-        for (Map.Entry<String, String> entry : tags.entrySet()) {
-            newVertex.set(entry.getKey(), entry.getValue());
+        for (Map.Entry<String, String> tag : tags.entrySet()) {
+            newVertex.set(PREFIX_TAG+tag.getKey(), tag.getValue());
         }
         newVertex.save();
         return newVertex;
@@ -144,7 +146,7 @@ public class ArcadedbUtils {
             Optional<Vertex> optVertex = rs.next().getVertex();
             if (optVertex.isEmpty()) continue;
             Vertex vertex = optVertex.get();
-            if (vertex.toMap(false).size() == tags.size()) return vertex;
+            if (getTags(vertex).size() == tags.size()) return vertex;
         }
 
         throw new TargetNotFoundException("object vertex under given tags not found");
@@ -173,9 +175,20 @@ public class ArcadedbUtils {
             for (Map.Entry<String, String> entry : tags.entrySet()) {
                 sqlBuilder.append(firstTag ? " WHERE " : " AND ");
                 firstTag = false;
-                sqlBuilder.append(String.format("%s='%s'", entry.getKey(), entry.getValue()));
+                sqlBuilder.append(String.format("%s='%s'", PREFIX_TAG+entry.getKey(), entry.getValue()));
             }
         }
         return sqlBuilder.toString();
+    }
+
+    public static Map<String, String> getTags(Vertex object){
+        HashMap<String, String> tags = new HashMap<>();
+        for (Map.Entry<String, Object> property : object.toMap(false).entrySet()){
+            String key = property.getKey();
+            if (key.startsWith(PREFIX_TAG)){
+                tags.put(key.substring(PREFIX_TAG.length()), property.getValue().toString());
+            }
+        }
+        return tags;
     }
 }
