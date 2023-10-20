@@ -301,7 +301,7 @@ public class ArcadeTSDBWorker implements Runnable {
         return jsonRes;
     }
 
-    public void insertArrayFormatTimeseries(TimeseriesEngine tsEngine, Vertex object, JSONObject metrics, Map<String, UpdateStrategy> strategyMap,
+    public void insertArrayFormatTimeseries(TimeseriesEngine tsEngine, MutableVertex object, JSONObject metrics, Map<String, UpdateStrategy> strategyMap,
                                             int insertIndex, String objectType, Map<String, String> tags) throws Exception {
         for (String metricName : metrics.keySet()) {
             JSONObject timeValue = metrics.getJSONObject(metricName);
@@ -363,7 +363,7 @@ public class ArcadeTSDBWorker implements Runnable {
         }
     }
 
-    public void insertDatapointFormatTimeseries(TimeseriesEngine tsEngine, Vertex object, JSONArray datapoints, Map<String, UpdateStrategy> strategyMap,
+    public void insertDatapointFormatTimeseries(TimeseriesEngine tsEngine, MutableVertex object, JSONArray datapoints, Map<String, UpdateStrategy> strategyMap,
                                                 int insertIndex, String objectType, Map<String, String> tags) throws Exception {
         for (int dpIndex = 0; dpIndex < datapoints.size(); dpIndex++) {
             JSONObject datapoint = datapoints.getJSONObject(dpIndex);

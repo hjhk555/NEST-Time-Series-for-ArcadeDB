@@ -71,7 +71,7 @@ public class TimeseriesEngine {
         }
     }
 
-    public StatsBlockRoot getOrNewStatsTreeRoot(Vertex object, String metric, DataType dataType, int statsTreeDegree) throws TimeseriesException {
+    public StatsBlockRoot getOrNewStatsTreeRoot(MutableVertex object, String metric, DataType dataType, int statsTreeDegree) throws TimeseriesException {
         final String metricBucketIdField = PREFIX_METRIC_BUCKETID + metric;
         final String metricPositionField = PREFIX_METRIC_POSITION + metric;
         final String metricDocumentType = object.getIdentity().getBucketId()+"_"+metric;
@@ -92,10 +92,9 @@ public class TimeseriesEngine {
         // no existing statsBlockRoot, create one
         if (metricBucketId == null || metricOffset == null){
             treeRoot = StatsBlock.newStatsTree(manager, metricDocumentType, dataType, statsTreeDegree);
-            MutableVertex dirtyObject = object.modify();
-            dirtyObject.set(metricBucketIdField, treeRoot.document.getIdentity().getBucketId());
-            dirtyObject.set(metricPositionField, treeRoot.document.getIdentity().getPosition());
-            dirtyObject.save();
+            object.set(metricBucketIdField, treeRoot.document.getIdentity().getBucketId());
+            object.set(metricPositionField, treeRoot.document.getIdentity().getPosition());
+            object.save();
         }else{
             treeRoot = StatsBlock.getStatsBlockRoot(manager, manager.getRID(metricBucketId, metricOffset), metricDocumentType);
         }
@@ -112,11 +111,11 @@ public class TimeseriesEngine {
      * @param strategy update strategy if data point exist at target timestamp
      * @throws DuplicateTimestampException if <code>strategy</code> is ERROR and data point already exist at target timestamp
      */
-    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy) throws TimeseriesException {
+    public void insertDataPoint(MutableVertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy) throws TimeseriesException {
         insertDataPoint(object, metric, dataType, dataPoint, strategy, StatsBlock.DEFAULT_TREE_DEGREE);
     }
 
-    public void insertDataPoint(Vertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
+    public void insertDataPoint(MutableVertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
         StatsBlockRoot root = getOrNewStatsTreeRoot(object, metric, dataType, statsTreeDegree);
         dataPoint = root.dataType.checkAndConvertDataPoint(dataPoint);
         root.insert(dataPoint, strategy);
@@ -132,11 +131,13 @@ public class TimeseriesEngine {
 
     public void begin(){
         database.begin();
+        database.setAsyncFlush(false);
     }
 
-    public void commit(){
+    public void commit() throws TimeseriesException {
         manager.saveAll();
         database.commit();
+        manager.clearCache();
     }
 
     public void rollback(){

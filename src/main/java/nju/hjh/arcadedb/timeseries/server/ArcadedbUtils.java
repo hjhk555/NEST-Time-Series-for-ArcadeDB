@@ -32,12 +32,14 @@ public class ArcadedbUtils {
         synchronized (databaseInstances) {
             Database database = databaseInstances.get(dbName);
             if (database != null) return database;
+
             DatabaseFactory dbf = new DatabaseFactory(ServerUtils.DATABASE_DIR + dbName);
             if (dbf.exists()) {
                 database = dbf.open();
             } else {
                 database = dbf.create();
             }
+
             databaseInstances.put(dbName, database);
             return database;
         }
@@ -47,7 +49,16 @@ public class ArcadedbUtils {
         synchronized (databaseInstances) {
             Database database = databaseInstances.get(dbName);
             if (database != null) return database;
-            throw new DatabaseException("database '" + dbName + "' not exists");
+
+            DatabaseFactory dbf = new DatabaseFactory(ServerUtils.DATABASE_DIR + dbName);
+            if (dbf.exists()) {
+                database = dbf.open();
+            } else {
+                throw new DatabaseException("database '" + dbName + "' not exists");
+            }
+
+            databaseInstances.put(dbName, database);
+            return database;
         }
     }
 

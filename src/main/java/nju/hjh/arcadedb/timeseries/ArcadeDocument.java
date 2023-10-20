@@ -11,7 +11,6 @@ public abstract class ArcadeDocument {
     public final Document document;
     // if this document is dirty
     public boolean dirty = false;
-    public boolean cahced = false;
 
     public ArcadeDocument(ArcadeDocumentManager manager, Document document) {
         this.manager = manager;
@@ -19,7 +18,7 @@ public abstract class ArcadeDocument {
     }
 
     // save ArcadeDB document
-    public void save(){
+    public void save() throws TimeseriesException {
         if (document.getIdentity() == null){
             // new document
             try {
@@ -44,9 +43,6 @@ public abstract class ArcadeDocument {
 
     // set this document to dirty
     public void setAsDirty(){
-        // ensure document is in cache
-        if (!cahced)
-            manager.putCache(this);
         dirty = true;
     }
 }

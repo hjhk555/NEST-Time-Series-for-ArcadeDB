@@ -1,8 +1,8 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import indi.hjhk.exception.ExceptionSerializer;
-import indi.hjhk.log.Logger;
+import nju.hjh.utils.exception.ExceptionSerializer;
+import nju.hjh.utils.log.Logger;
 import nju.hjh.arcadedb.timeseries.*;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
@@ -53,7 +53,7 @@ public class TimeseriesPeriodQuertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();

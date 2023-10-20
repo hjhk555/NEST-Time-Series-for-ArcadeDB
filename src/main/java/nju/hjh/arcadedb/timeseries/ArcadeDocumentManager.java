@@ -9,11 +9,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ArcadeDocumentManager {
-    // max size of cache
-    public static final int MAX_CACHE_SIZE = 1024;
-    // initial size of cache
-    public static final int INIT_CACHE_SIZE = 64;
-
     // created instances of ArcadeDocumentManager
     public static final HashMap<Database, ArcadeDocumentManager> managerInstances = new HashMap<>();
     // arcadeDB database
@@ -21,18 +16,7 @@ public class ArcadeDocumentManager {
     // null RID
     public RID nullRID;
     // LRU cache
-    public LinkedHashMap<RID, ArcadeDocument> cache = new LinkedHashMap<>(INIT_CACHE_SIZE, 0.75f, true){
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<RID, ArcadeDocument> eldest) {
-            if (size() > MAX_CACHE_SIZE){
-                ArcadeDocument eldestDocument = eldest.getValue();
-                eldestDocument.cahced = false;
-                eldestDocument.save();
-                return true;
-            }
-            return false;
-        }
-    };
+    public Map<RID, ArcadeDocument> cache = new HashMap<>();
 
     public ArcadeDocumentManager(Database database){
         this.database = database;
@@ -81,16 +65,16 @@ public class ArcadeDocumentManager {
         return result;
     }
 
-    public void putCache(ArcadeDocument document){
+    public void putCache(ArcadeDocument document) throws TimeseriesException {
         RID documentRID = document.document.getIdentity();
-        if (documentRID != null){
+        if (documentRID != null)
             cache.put(documentRID, document);
-            document.cahced = true;
-        }
+        else
+            throw new TimeseriesException("cannot push document without rid into cache");
     }
 
     // save all dirty documents
-    public void saveAll(){
+    public void saveAll() throws TimeseriesException {
         for (ArcadeDocument document : cache.values()){
             document.save();
         }

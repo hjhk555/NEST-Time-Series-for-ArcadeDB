@@ -1,8 +1,8 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import indi.hjhk.exception.ExceptionSerializer;
-import indi.hjhk.log.Logger;
+import nju.hjh.utils.exception.ExceptionSerializer;
+import nju.hjh.utils.log.Logger;
 import nju.hjh.arcadedb.timeseries.*;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
@@ -52,7 +52,7 @@ public class TimeseriesOODTest {
                 if (ran.nextInt(100) < oodProb){
                     oodData.offer(i);
                 }else {
-                    tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
+                    tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
                     count++;
                 }
                 if (count == commitSize){
@@ -72,7 +72,7 @@ public class TimeseriesOODTest {
             long oodSize = oodData.size();
             while (!oodData.isEmpty()){
                 int ood = oodData.poll();
-                tsEngine.insertDataPoint(testVertex, "status", DataType.LONG, new LongDataPoint(ood, ood), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(ood, ood), UpdateStrategy.ERROR);
                 count++;
 
                 if (count == commitSize){
