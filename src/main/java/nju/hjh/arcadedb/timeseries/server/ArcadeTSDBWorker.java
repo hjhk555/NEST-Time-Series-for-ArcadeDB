@@ -475,7 +475,7 @@ public class ArcadeTSDBWorker implements Runnable {
         jsonRes.put(ServerUtils.Key.OUT_SUCCESS, true);
         // start transaction
         synchronized (database) {
-            tsEngine.begin();
+            //tsEngine.begin();
             try {
                 Vertex object = ArcadedbUtils.getSingleVertex(database, objectType, tags);
                 if (queryType.equals(ServerUtils.Value.QUERY_TYPE_METRICS)) {
@@ -514,8 +514,8 @@ public class ArcadeTSDBWorker implements Runnable {
                     switch (queryType) {
                         case ServerUtils.Value.METRIC_QUERY_TYPE_LISTALL -> {
                             Long limit = jsonQuery.getLong(ServerUtils.Key.QUERY_LIMIT);
-                            if (limit == null || limit > ServerUtils.MAX_LIMIT_QUERY_LISTALL)
-                                limit = ServerUtils.MAX_LIMIT_QUERY_LISTALL;
+                            if (limit == null || limit > ServerUtils.MAX_LIMIT_QUERY_OBJECTS)
+                                limit = ServerUtils.MAX_LIMIT_QUERY_OBJECTS;
                             if (limit <= 0)
                                 throw new MessageParsingException("limit should be positive");
 
@@ -619,9 +619,9 @@ public class ArcadeTSDBWorker implements Runnable {
                     }
                 }
 
-                tsEngine.commit();
+                //tsEngine.commit();
             } catch (TimeseriesException e) {
-                tsEngine.rollback();
+                //tsEngine.rollback();
                 throw e;
             }
         }
@@ -634,7 +634,7 @@ public class ArcadeTSDBWorker implements Runnable {
         jsonResult.put(ServerUtils.Key.OUT_SUCCESS, true);
         // start transaction
         synchronized (database) {
-            tsEngine.begin();
+            //tsEngine.begin();
             try {
                 ResultSet objects = ArcadedbUtils.getVertices(database, objectType, tags);
                 if (!objects.hasNext())
@@ -770,9 +770,9 @@ public class ArcadeTSDBWorker implements Runnable {
                     }
                 }
 
-                tsEngine.commit();
+                //tsEngine.commit();
             } catch (TimeseriesException e) {
-                tsEngine.rollback();
+                //tsEngine.rollback();
                 throw e;
             }
         }

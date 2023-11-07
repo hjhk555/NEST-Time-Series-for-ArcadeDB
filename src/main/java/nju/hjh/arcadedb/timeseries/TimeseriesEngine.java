@@ -1,7 +1,6 @@
 package nju.hjh.arcadedb.timeseries;
 
 import com.arcadedb.database.Database;
-import com.arcadedb.graph.Edge;
 import com.arcadedb.graph.MutableVertex;
 import com.arcadedb.graph.Vertex;
 import com.arcadedb.schema.DocumentType;
@@ -131,7 +130,8 @@ public class TimeseriesEngine {
 
     public void begin(){
         database.begin();
-        database.setAsyncFlush(false);
+        //database.setAsyncFlush(false);
+        database.setTransactionIsolationLevel(Database.TRANSACTION_ISOLATION_LEVEL.REPEATABLE_READ);
     }
 
     public void commit() throws TimeseriesException {
@@ -142,7 +142,8 @@ public class TimeseriesEngine {
 
     public void rollback(){
         manager.clearCache();
-        database.rollback();
+        if (database.isTransactionActive())
+            database.rollback();
     }
 
 }

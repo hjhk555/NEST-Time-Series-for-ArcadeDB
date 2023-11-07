@@ -15,7 +15,7 @@
          <center>
             <TextArea fx:id="txtSend" prefHeight="365.0" prefWidth="337.0" BorderPane.alignment="CENTER">
                <font>
-                  <Font size="14.0" />
+                  <Font size="20.0" />
                </font></TextArea>
          </center>
          <top>
@@ -52,7 +52,7 @@
          <center>
             <TextArea fx:id="txtReceive" editable="false" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
                <font>
-                  <Font size="14.0" />
+                  <Font size="20.0" />
                </font></TextArea>
          </center>
          <top>
