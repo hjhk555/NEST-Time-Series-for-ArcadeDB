@@ -100,13 +100,13 @@ public class TimeseriesUpdateTest {
                 elapsed = System.currentTimeMillis() - startTime;
                 logger.logOnStdout("query [%d, %d] get %s in %d ms with correctSum=%d, correct=%s", queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed, ans, sum == ans);
             }
+            tsEngine.commit();
         } catch (TimeseriesException e) {
             logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;
         }
-        tsEngine.commit();
 
         database.close();
     }

@@ -3,7 +3,7 @@ import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
 import nju.hjh.utils.exception.ExceptionSerializer;
 import nju.hjh.utils.log.Logger;
-import nju.hjh.arcadedb.timeseries.DataPointSet;
+import nju.hjh.arcadedb.timeseries.DataPointList;
 import nju.hjh.arcadedb.timeseries.DataType;
 import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
@@ -97,10 +97,10 @@ public class TimeseriesUnfixedTest {
                 startTime = System.currentTimeMillis();
                 UnfixedStatistics statistics = (UnfixedStatistics) tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
 
-                DataPointSet firstRes = tsEngine.periodQuery(testVertex, "status", statistics.firstTime, statistics.firstTime);
+                DataPointList firstRes = tsEngine.periodQuery(testVertex, "status", statistics.firstTime, statistics.firstTime, 1);
                 String firstValue = (String) firstRes.next().getValue();
 
-                DataPointSet lastRes = tsEngine.periodQuery(testVertex, "status", statistics.lastTime, statistics.lastTime);
+                DataPointList lastRes = tsEngine.periodQuery(testVertex, "status", statistics.lastTime, statistics.lastTime, 1);
                 String lastValue = (String) lastRes.next().getValue();
 
                 elapsed = System.currentTimeMillis() - startTime;
@@ -108,6 +108,7 @@ public class TimeseriesUnfixedTest {
                         queryStart, queryEnd, statistics.toPrettyPrintString(), firstValue, lastValue, elapsed,
                         (strList.get((int) statistics.firstTime).equals(firstValue) && strList.get((int) statistics.lastTime).equals(lastValue)));
             }
+            tsEngine.commit();
 
         } catch (TimeseriesException e) {
             logger.logOnStderr(ExceptionSerializer.serializeAll(e));
@@ -115,7 +116,6 @@ public class TimeseriesUnfixedTest {
             database.close();
             return;
         }
-        tsEngine.commit();
 
         database.close();
     }

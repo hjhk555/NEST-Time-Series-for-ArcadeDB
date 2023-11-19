@@ -62,7 +62,7 @@ public class TimeseriesPersistentTest {
                 logger.logOnStdout("querying [%d, %d]:", queryStart, queryEnd);
                 long startTime = System.currentTimeMillis();
 
-                DataPointSet rs = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
+                DataPointList rs = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
                 DataPoint dp;
                 int cur = queryStart;
                 while ((dp = rs.next()) != null){
@@ -81,13 +81,13 @@ public class TimeseriesPersistentTest {
                 logger.logOnStdout("query [%d, %d] finished in %d ms", queryStart, queryEnd, elapsed);
             }
 
+            tsEngine.commit();
         } catch (TimeseriesException e) {
             logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             database.rollback();
             database.close();
             return;
         }
-        tsEngine.commit();
 
         database.close();
     }

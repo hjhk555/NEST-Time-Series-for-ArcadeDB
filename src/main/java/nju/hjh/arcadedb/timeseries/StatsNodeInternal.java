@@ -10,7 +10,7 @@ import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
 import java.util.ArrayList;
 
-public class StatsBlockInternal extends StatsBlock{
+public class StatsNodeInternal extends StatsNode {
     public static final byte BLOCK_TYPE = 1;
 
     /**
@@ -19,11 +19,11 @@ public class StatsBlockInternal extends StatsBlock{
      */
     public static final int HEADER_WITHOUT_STATS_AND_CHILD = 5;
 
-    public StatsBlock parent;
+    public StatsNode parent;
     public ArrayList<RID> childRID = new ArrayList<>();
     public ArrayList<Long> childStartTime = new ArrayList<>();
 
-    public StatsBlockInternal(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) {
+    public StatsNodeInternal(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) {
         super(manager, document, metric, degree, dataType);
     }
 
@@ -45,12 +45,12 @@ public class StatsBlockInternal extends StatsBlock{
             throw new TimeseriesException("stat header size exceeded");
 
         binary.size(statSize);
-        mutableDocument.set("stat", binary.toByteArray());
+        mutableDocument.set(PROP_NODE_INFO, binary.toByteArray());
         return mutableDocument;
     }
 
     @Override
-    public void setParent(StatsBlock parent) {
+    public void setParent(StatsNode parent) {
         this.parent = parent;
     }
 
@@ -63,10 +63,10 @@ public class StatsBlockInternal extends StatsBlock{
         if (insertPos == -1)
             throw new TimeseriesException("cannot insert datapoint into tree as no child block can manage target timestamp");
 
-        StatsBlock blockToInsert = getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
+        StatsNode blockToInsert = getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
         blockToInsert.setParent(this);
         blockToInsert.setStartTime(childStartTime.get(insertPos));
-        blockToInsert.setActive(blockToInsert instanceof StatsBlockInternal && this.isActive && (insertPos == childRID.size() - 1));
+        blockToInsert.setActive(blockToInsert instanceof StatsNodeInternal && this.isActive && (insertPos == childRID.size() - 1));
         blockToInsert.insert(data, strategy);
     }
 
@@ -90,7 +90,7 @@ public class StatsBlockInternal extends StatsBlock{
     }
 
     @Override
-    public void addChild(StatsBlock child) throws TimeseriesException {
+    public void addChild(StatsNode child) throws TimeseriesException {
         int insertPos = MathUtils.longBinarySearchLatter(childStartTime, child.startTime);
         if (insertPos < childStartTime.size() && childStartTime.get(insertPos) == child.startTime)
             throw new TimeseriesException("cannot insert child with existing startTime");
@@ -107,8 +107,8 @@ public class StatsBlockInternal extends StatsBlock{
             else
                 splitedSize = totalSize / 2;
 
-            StatsBlockInternal newInternal = (StatsBlockInternal) manager.newArcadeDocument(PREFIX_STATSBLOCK + metric, document1 -> {
-                return new StatsBlockInternal(manager, document1, metric, degree, dataType);
+            StatsNodeInternal newInternal = (StatsNodeInternal) manager.newArcadeDocument(PREFIX_STATS_NODE + metric, document1 -> {
+                return new StatsNodeInternal(manager, document1, metric, degree, dataType);
             });
             newInternal.setStartTime(childStartTime.get(splitedSize));
             newInternal.setActive(isActive);
@@ -136,16 +136,16 @@ public class StatsBlockInternal extends StatsBlock{
     }
 
     @Override
-    public void addLeafBlock(StatsBlockLeaf leaf) throws TimeseriesException {
+    public void addLeafBlock(StatsNodeLeaf leaf) throws TimeseriesException {
         // merge statistics
         statistics.merge(leaf.statistics);
 
         // locate insert block
         int insertPos = MathUtils.longBinarySearchFormer(childStartTime, leaf.startTime);
-        StatsBlock blockToInsert = StatsBlock.getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
+        StatsNode blockToInsert = StatsNode.getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
         blockToInsert.setStartTime(childStartTime.get(insertPos));
         blockToInsert.setParent(this);
-        blockToInsert.setActive(blockToInsert instanceof StatsBlockInternal && isActive && (insertPos == childRID.size() - 1));
+        blockToInsert.setActive(blockToInsert instanceof StatsNodeInternal && isActive && (insertPos == childRID.size() - 1));
         blockToInsert.addLeafBlock(leaf);
 
         setAsDirty();
@@ -180,9 +180,9 @@ public class StatsBlockInternal extends StatsBlock{
     }
 
     @Override
-    public DataPointSet periodQuery(long startTime, long endTime) throws TimeseriesException {
+    public DataPointList periodQuery(long startTime, long endTime, int limit) throws TimeseriesException {
         // locate first block
         int startPos = MathUtils.longBinarySearchFormer(childStartTime, startTime);
-        return getStatsBlockNonRoot(manager, childRID.get(startPos), metric, degree, dataType).periodQuery(startTime, endTime);
+        return getStatsBlockNonRoot(manager, childRID.get(startPos), metric, degree, dataType).periodQuery(startTime, endTime, limit);
     }
 }

@@ -1,5 +1,6 @@
 package nju.hjh.arcadedb.timeseries;
 
+import com.arcadedb.database.Binary;
 import com.arcadedb.database.Database;
 import com.arcadedb.graph.MutableVertex;
 import com.arcadedb.graph.Vertex;
@@ -14,9 +15,8 @@ import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 import java.util.*;
 
 public class TimeseriesEngine {
-    public static final String PREFIX_METRIC_BUCKETID = "_mb";
-    public static final String PREFIX_METRIC_POSITION = "_mp";
-    public static final int STATSBLOCK_BUCKETS = 1;
+    public static final String PREFIX_METRIC = "_m";
+    public static final int STATS_NODE_BUCKETS = 1;
     public final Database database;
     public final ArcadeDocumentManager manager;
 
@@ -44,58 +44,59 @@ public class TimeseriesEngine {
     public Set<String> getAllMetrics(Vertex object){
         Set<String> res = new HashSet<>();
         for (String propertyName : object.getPropertyNames()){
-            if (propertyName.startsWith(PREFIX_METRIC_BUCKETID))
-                res.add(propertyName.substring(PREFIX_METRIC_BUCKETID.length()));
+            if (propertyName.startsWith(PREFIX_METRIC))
+                res.add(propertyName.substring(PREFIX_METRIC.length()));
         }
         return res;
     }
 
-    public StatsBlockRoot getStatsTreeRoot(Vertex object, String metric) throws TimeseriesException {
-        final String metricBucketIdField = PREFIX_METRIC_BUCKETID + metric;
-        final String metricPositionField = PREFIX_METRIC_POSITION + metric;
+    public StatsNodeRoot getStatsTreeRoot(Vertex object, String metric) throws TimeseriesException {
+        final String metricRIDField = PREFIX_METRIC + metric;
         final String metricDocumentType = object.getIdentity().getBucketId()+"_"+metric;
 
         // object's statsBlock document not exist
-        if (!database.getSchema().existsType(StatsBlock.PREFIX_STATSBLOCK+metricDocumentType))
-            throw new TargetNotFoundException("object's statsBlock documentType "+StatsBlock.PREFIX_STATSBLOCK+metricDocumentType+" not exist");
+        if (!database.getSchema().existsType(StatsNode.PREFIX_STATS_NODE +metricDocumentType))
+            throw new TargetNotFoundException("object's statsBlock documentType "+ StatsNode.PREFIX_STATS_NODE +metricDocumentType+" not exist");
 
-        Integer metricBucketId = object.getInteger(metricBucketIdField);
-        Long metricOffset = object.getLong(metricPositionField);
-
-        // no existing metric
-        if (metricBucketId == null || metricOffset == null){
+        byte[] metricRidBytes = object.getBinary(metricRIDField);
+        if (metricRidBytes == null)
+            // no existing metric
             throw new TargetNotFoundException("object has no metric "+metric);
-        }else{
-            return StatsBlock.getStatsBlockRoot(manager, manager.getRID(metricBucketId, metricOffset), metricDocumentType);
-        }
+
+        Binary metricRID = new Binary(metricRidBytes);
+        return StatsNode.getStatsBlockRoot(manager, manager.getRID(metricRID.getInt(), metricRID.getLong()), metricDocumentType);
     }
 
-    public StatsBlockRoot getOrNewStatsTreeRoot(MutableVertex object, String metric, DataType dataType, int statsTreeDegree) throws TimeseriesException {
-        final String metricBucketIdField = PREFIX_METRIC_BUCKETID + metric;
-        final String metricPositionField = PREFIX_METRIC_POSITION + metric;
+    public StatsNodeRoot getOrNewStatsTreeRoot(MutableVertex object, String metric, DataType dataType, int statsTreeDegree) throws TimeseriesException {
+        final String metricRIDField = PREFIX_METRIC + metric;
         final String metricDocumentType = object.getIdentity().getBucketId()+"_"+metric;
 
         // create object's metric document if not exist
-        if (!database.getSchema().existsType(StatsBlock.PREFIX_STATSBLOCK+metricDocumentType)) {
-            DocumentType statsBlockType = database.getSchema().createDocumentType(StatsBlock.PREFIX_STATSBLOCK + metricDocumentType, STATSBLOCK_BUCKETS);
-            statsBlockType.createProperty("stat", Type.BINARY);
-            statsBlockType.createProperty("data", Type.BINARY);
+        if (!database.getSchema().existsType(StatsNode.PREFIX_STATS_NODE +metricDocumentType)) {
+            DocumentType statsNodeType = database.getSchema().createDocumentType(StatsNode.PREFIX_STATS_NODE + metricDocumentType, STATS_NODE_BUCKETS);
+            statsNodeType.createProperty(StatsNode.PROP_NODE_INFO, Type.BINARY);
+        }
+        if (!database.getSchema().existsType(StatsNode.PREFIX_DATA_NODE +metricDocumentType)) {
+            DocumentType dataNodeType = database.getSchema().createDocumentType(StatsNode.PREFIX_DATA_NODE + metricDocumentType, STATS_NODE_BUCKETS);
+            dataNodeType.createProperty(StatsNode.PROP_NODE_INFO, Type.BINARY);
+            dataNodeType.createProperty(StatsNode.PROP_NODE_DATA, Type.BINARY);
         }
 
         // get root of statsTree
-        StatsBlockRoot treeRoot;
+        StatsNodeRoot treeRoot;
 
-        Integer metricBucketId = object.getInteger(metricBucketIdField);
-        Long metricOffset = object.getLong(metricPositionField);
-
-        // no existing statsBlockRoot, create one
-        if (metricBucketId == null || metricOffset == null){
-            treeRoot = StatsBlock.newStatsTree(manager, metricDocumentType, dataType, statsTreeDegree);
-            object.set(metricBucketIdField, treeRoot.document.getIdentity().getBucketId());
-            object.set(metricPositionField, treeRoot.document.getIdentity().getPosition());
+        byte[] metricRidBytes = object.getBinary(metricRIDField);
+        if (metricRidBytes == null){
+            // no existing statsBlockRoot, create one
+            treeRoot = StatsNode.newStatsTree(manager, metricDocumentType, dataType, statsTreeDegree);
+            Binary metricRID = new Binary(32);
+            metricRID.putInt(treeRoot.document.getIdentity().getBucketId());
+            metricRID.putLong(treeRoot.document.getIdentity().getPosition());
+            object.set(metricRIDField, metricRID.toByteArray());
             object.save();
         }else{
-            treeRoot = StatsBlock.getStatsBlockRoot(manager, manager.getRID(metricBucketId, metricOffset), metricDocumentType);
+            Binary metricRID = new Binary(metricRidBytes);
+            treeRoot = StatsNode.getStatsBlockRoot(manager, manager.getRID(metricRID.getInt(), metricRID.getLong()), metricDocumentType);
         }
 
         return treeRoot;
@@ -111,11 +112,11 @@ public class TimeseriesEngine {
      * @throws DuplicateTimestampException if <code>strategy</code> is ERROR and data point already exist at target timestamp
      */
     public void insertDataPoint(MutableVertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy) throws TimeseriesException {
-        insertDataPoint(object, metric, dataType, dataPoint, strategy, StatsBlock.DEFAULT_TREE_DEGREE);
+        insertDataPoint(object, metric, dataType, dataPoint, strategy, StatsNode.DEFAULT_TREE_DEGREE);
     }
 
     public void insertDataPoint(MutableVertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
-        StatsBlockRoot root = getOrNewStatsTreeRoot(object, metric, dataType, statsTreeDegree);
+        StatsNodeRoot root = getOrNewStatsTreeRoot(object, metric, dataType, statsTreeDegree);
         dataPoint = root.dataType.checkAndConvertDataPoint(dataPoint);
         root.insert(dataPoint, strategy);
     }
@@ -124,14 +125,17 @@ public class TimeseriesEngine {
         return getStatsTreeRoot(object, metric).aggregativeQuery(startTime, endTime);
     }
 
-    public DataPointSet periodQuery(Vertex object, String metric, long startTime, long endTime) throws TimeseriesException {
-        return getStatsTreeRoot(object, metric).periodQuery(startTime, endTime);
+    public DataPointList periodQuery(Vertex object, String metric, long startTime, long endTime) throws TimeseriesException {
+        return periodQuery(object, metric, startTime, endTime, -1);
+    }
+
+    public DataPointList periodQuery(Vertex object, String metric, long startTime, long endTime, int limit) throws TimeseriesException {
+        return getStatsTreeRoot(object, metric).periodQuery(startTime, endTime, limit);
     }
 
     public void begin(){
         database.begin();
-        //database.setAsyncFlush(false);
-        database.setTransactionIsolationLevel(Database.TRANSACTION_ISOLATION_LEVEL.REPEATABLE_READ);
+        database.setAsyncFlush(false);
     }
 
     public void commit() throws TimeseriesException {

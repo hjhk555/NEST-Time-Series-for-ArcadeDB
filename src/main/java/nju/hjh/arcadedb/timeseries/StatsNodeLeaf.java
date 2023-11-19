@@ -10,7 +10,7 @@ import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
 import java.util.ArrayList;
 
-public class StatsBlockLeaf extends StatsBlock{
+public class StatsNodeLeaf extends StatsNode {
     public static final byte BLOCK_TYPE = 2;
 
     /** size of stat header without statistics:
@@ -18,14 +18,14 @@ public class StatsBlockLeaf extends StatsBlock{
      */
     public static final int HEADER_WITHOUT_STATS = 25;
 
-    public StatsBlock parent;
+    public StatsNode parent;
     public ArrayList<DataPoint> dataList;
     public RID prevRID;
     public RID succRID;
     // for unfixed data type
     public int dataBytesUseed;
 
-    public StatsBlockLeaf(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) throws TimeseriesException {
+    public StatsNodeLeaf(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) throws TimeseriesException {
         super(manager, document, metric, degree, dataType);
         statistics = Statistics.newEmptyStats(dataType);
     }
@@ -33,7 +33,7 @@ public class StatsBlockLeaf extends StatsBlock{
     void loadData() throws TimeseriesException {
         if (dataList == null) {
             dataList = new ArrayList<>();
-            Binary binary = new Binary(document.getBinary("data"));
+            Binary binary = new Binary(document.getBinary(PROP_NODE_DATA));
             for (int i = 0; i < statistics.count; i++)
                 dataList.add(DataPoint.getDataPointFromBinary(dataType, binary));
             if (!dataType.isFixed()){
@@ -62,7 +62,7 @@ public class StatsBlockLeaf extends StatsBlock{
             throw new TimeseriesException("stat header size exceeded");
 
         statBinary.size(statSize);
-        mutableDocument.set("stat", statBinary.toByteArray());
+        mutableDocument.set(PROP_NODE_INFO, statBinary.toByteArray());
 
         // put data
         if (dataList != null){
@@ -75,13 +75,13 @@ public class StatsBlockLeaf extends StatsBlock{
                 throw new TimeseriesException("data block size exceeded");
 
             dataBinary.size(MAX_DATA_BLOCK_SIZE);
-            mutableDocument.set("data", dataBinary.toByteArray());
+            mutableDocument.set(PROP_NODE_DATA, dataBinary.toByteArray());
         }
         return mutableDocument;
     }
 
     @Override
-    public void setParent(StatsBlock parent) {
+    public void setParent(StatsNode parent) {
         this.parent = parent;
     }
 
@@ -137,8 +137,8 @@ public class StatsBlockLeaf extends StatsBlock{
             else
                 splitedSize = totalSize / 2;
 
-            StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
-                return new StatsBlockLeaf(manager, document1, metric, degree, dataType);
+            StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_DATA_NODE + metric, document1 -> {
+                return new StatsNodeLeaf(manager, document1, metric, degree, dataType);
             });
             newLeaf.setStartTime(this.dataList.get(splitedSize).timestamp);
             newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, totalSize));
@@ -161,7 +161,7 @@ public class StatsBlockLeaf extends StatsBlock{
                 newLeaf.save();
                 this.succRID = newLeaf.document.getIdentity();
             }else {
-                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, metric, degree, dataType);
+                StatsNodeLeaf succLeaf = (StatsNodeLeaf) getStatsBlockNonRoot(manager, this.succRID, metric, degree, dataType);
                 newLeaf.succRID = this.succRID;
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.save();
@@ -235,8 +235,8 @@ public class StatsBlockLeaf extends StatsBlock{
             }
 
             // create latter half leaf node
-            StatsBlockLeaf newLeaf = (StatsBlockLeaf) manager.newArcadeDocument(PREFIX_STATSBLOCK+ metric, document1 -> {
-                return new StatsBlockLeaf(manager, document1, metric, degree, dataType);
+            StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_DATA_NODE + metric, document1 -> {
+                return new StatsNodeLeaf(manager, document1, metric, degree, dataType);
             });
             newLeaf.setStartTime(dataList.get(splitedSize).timestamp);
             newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, dataList.size()));
@@ -259,7 +259,7 @@ public class StatsBlockLeaf extends StatsBlock{
                 newLeaf.save();
                 this.succRID = newLeaf.document.getIdentity();
             }else{
-                StatsBlockLeaf succLeaf = (StatsBlockLeaf) getStatsBlockNonRoot(manager, this.succRID, metric, degree, dataType);
+                StatsNodeLeaf succLeaf = (StatsNodeLeaf) getStatsBlockNonRoot(manager, this.succRID, metric, degree, dataType);
                 newLeaf.succRID = this.succRID;
                 newLeaf.prevRID = this.document.getIdentity();
                 newLeaf.save();
@@ -284,12 +284,12 @@ public class StatsBlockLeaf extends StatsBlock{
     }
 
     @Override
-    public void addChild(StatsBlock child) throws TimeseriesException {
+    public void addChild(StatsNode child) throws TimeseriesException {
         throw new TimeseriesException("cannot add child to leaf node");
     }
 
     @Override
-    public void addLeafBlock(StatsBlockLeaf leaf) throws TimeseriesException {
+    public void addLeafBlock(StatsNodeLeaf leaf) throws TimeseriesException {
         parent.addChild(leaf);
     }
 
@@ -330,10 +330,66 @@ public class StatsBlockLeaf extends StatsBlock{
     }
 
     @Override
-    public DataPointSet periodQuery(long startTime, long endTime) throws TimeseriesException {
+    public DataPointList periodQuery(long startTime, long endTime, int limit) throws TimeseriesException {
         if (startTime < this.startTime)
             throw new TimeseriesException("period query over-headed");
 
-        return new DataPointSet(startTime, endTime, this.document.getIdentity(), manager, metric, degree, dataType);
+        DataPointList resultList = new DataPointList();
+        loadData();
+
+        int startPos, endPos;
+        // locate start index
+        if (statistics.firstTime >= startTime)
+            // start from head
+            startPos = 0;
+        else
+            // binary search
+            startPos = MathUtils.longBinarySearchLatter(dataList, startTime, object -> object.timestamp);
+        // locate end index
+        if (statistics.lastTime <= endTime)
+            // end at tail
+            endPos = dataList.size() - 1;
+        else
+            // binary search
+            endPos = MathUtils.longBinarySearchFormer(dataList, endTime, object -> object.timestamp);
+        // check limit
+        if (limit >= 0) {
+            int maxEndPos = startPos + limit - 1;
+            if (endPos > maxEndPos) endPos = maxEndPos;
+        }
+        // append data
+        if (startPos <= endPos)
+            resultList.dataPointList.addAll(dataList.subList(startPos, endPos + 1));
+
+        // find successor leaf for more data
+        long lastTimestampInList = dataList.get(endPos).timestamp;
+        StatsNodeLeaf currentLeaf = this;
+        while (endPos == this.dataList.size()-1 && currentLeaf.succRID.isValid()) {
+            // continue on next leaf
+            currentLeaf = (StatsNodeLeaf) StatsNode.getStatsBlockNonRoot(manager, currentLeaf.succRID, metric, degree, dataType);
+            currentLeaf.loadData();
+
+            if (lastTimestampInList >= currentLeaf.statistics.firstTime)
+                throw new TimeseriesException("successor leaf node contains smaller or equal timestamp");
+            // start from index 0
+
+            if (currentLeaf.statistics.lastTime <= endTime)
+                // end at tail
+                endPos = currentLeaf.dataList.size() - 1;
+            else
+                // binary search
+                endPos = MathUtils.longBinarySearchFormer(currentLeaf.dataList, endTime, object -> object.timestamp);
+
+            // check limit
+            if (limit >= 0) {
+                int maxEndPos = limit - resultList.dataPointList.size() - 1;
+                if (endPos > maxEndPos) endPos = maxEndPos;
+            }
+
+            if (endPos >= 0)
+                resultList.dataPointList.addAll(currentLeaf.dataList.subList(0, endPos + 1));
+        }
+
+        return resultList;
     }
 }

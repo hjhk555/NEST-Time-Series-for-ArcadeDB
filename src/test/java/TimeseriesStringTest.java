@@ -99,13 +99,13 @@ public class TimeseriesStringTest {
                         (strList.get((int) statistics.firstTime).equals(statistics.firstValue) && strList.get((int) statistics.lastTime).equals(statistics.lastValue)));
             }
 
+            tsEngine.commit();
         } catch (TimeseriesException e) {
             logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;
         }
-        tsEngine.commit();
 
         database.close();
     }

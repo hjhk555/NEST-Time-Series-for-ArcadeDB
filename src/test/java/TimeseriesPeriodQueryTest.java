@@ -10,7 +10,7 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.Random;
 
-public class TimeseriesPeriodQuertTest {
+public class TimeseriesPeriodQueryTest {
     public static void main(String[] args) {
         Logger logger = Logger.getPureLogger("TSPeriod");
         DatabaseFactory dbf = new DatabaseFactory("./databases/tsTest");
@@ -69,7 +69,7 @@ public class TimeseriesPeriodQuertTest {
                 logger.logOnStdout("querying [%d, %d]:", queryStart, queryEnd);
                 startTime = System.currentTimeMillis();
 
-                DataPointSet rs = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
+                DataPointList rs = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
                 DataPoint dp;
                 int cur = queryStart;
                 while ((dp = rs.next()) != null){
@@ -88,13 +88,13 @@ public class TimeseriesPeriodQuertTest {
                 logger.logOnStdout("query [%d, %d] finished in %d ms", queryStart, queryEnd, elapsed);
             }
 
+            tsEngine.commit();
         } catch (TimeseriesException e) {
             logger.logOnStderr(ExceptionSerializer.serializeAll(e));
             tsEngine.rollback();
             database.close();
             return;
         }
-        tsEngine.commit();
 
         database.close();
     }

@@ -1,7 +1,7 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import nju.hjh.arcadedb.timeseries.DataPointSet;
+import nju.hjh.arcadedb.timeseries.DataPointList;
 import nju.hjh.arcadedb.timeseries.DataType;
 import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
@@ -95,9 +95,9 @@ public class TimeseriesAppendTest {
 
                 startTime = System.currentTimeMillis();
                 Statistics statistics = tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
-                DataPointSet fset = tsEngine.periodQuery(testVertex, "status", statistics.firstTime, statistics.firstTime);
+                DataPointList fset = tsEngine.periodQuery(testVertex, "status", statistics.firstTime, statistics.firstTime, 1);
                 String strFirst = fset.next().getValue().toString();
-                DataPointSet lset = tsEngine.periodQuery(testVertex, "status", statistics.lastTime, statistics.lastTime);
+                DataPointList lset = tsEngine.periodQuery(testVertex, "status", statistics.lastTime, statistics.lastTime, 1);
                 String strLast = lset.next().getValue().toString();
 
                 elapsed = System.currentTimeMillis() - startTime;
@@ -105,6 +105,7 @@ public class TimeseriesAppendTest {
                         queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed,
                         strList.get((int) statistics.firstTime*10), strList.get((int) statistics.lastTime*10), strFirst, strLast);
             }
+            tsEngine.commit();
 
         } catch (TimeseriesException e) {
             logger.logOnStderr(ExceptionSerializer.serializeAll(e));
@@ -112,7 +113,6 @@ public class TimeseriesAppendTest {
             database.close();
             return;
         }
-        tsEngine.commit();
 
         database.close();
     }

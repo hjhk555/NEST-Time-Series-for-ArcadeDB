@@ -10,7 +10,7 @@ import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
 import java.util.ArrayList;
 
-public class StatsBlockRoot extends StatsBlock{
+public class StatsNodeRoot extends StatsNode {
     public static final byte BLOCK_TYPE = 0;
 
     /**
@@ -24,7 +24,7 @@ public class StatsBlockRoot extends StatsBlock{
     public ArrayList<RID> childRID = new ArrayList<>();
     public ArrayList<Long> childStartTime = new ArrayList<>();
 
-    public StatsBlockRoot(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) {
+    public StatsNodeRoot(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) {
         super(manager, document, metric, degree, dataType);
         // root is always latest and start at 0
         setStartTime(0);
@@ -32,7 +32,7 @@ public class StatsBlockRoot extends StatsBlock{
     }
 
     @Override
-    public void setParent(StatsBlock parent) {
+    public void setParent(StatsNode parent) {
         // ignore
     }
 
@@ -60,7 +60,7 @@ public class StatsBlockRoot extends StatsBlock{
             throw new TimeseriesException("stat header size exceeded");
 
         binary.size(statSize);
-        modifiedDocument.set("stat", binary.toByteArray());
+        modifiedDocument.set(PROP_NODE_INFO, binary.toByteArray());
 
         return modifiedDocument;
     }
@@ -75,7 +75,7 @@ public class StatsBlockRoot extends StatsBlock{
     }
 
     private void insertLatest(DataPoint data, UpdateStrategy strategy) throws TimeseriesException{
-        StatsBlockLeaf latestBlock = (StatsBlockLeaf) getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType);
+        StatsNodeLeaf latestBlock = (StatsNodeLeaf) getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType);
         latestBlock.setStartTime(latestStartTime);
         latestBlock.setActive(true);
         latestBlock.insert(data, strategy);
@@ -84,7 +84,7 @@ public class StatsBlockRoot extends StatsBlock{
         while (latestBlock.succRID.isValid()){
             addLeafBlock(latestBlock);
             latestRID = latestBlock.succRID;
-            latestBlock = (StatsBlockLeaf) StatsBlock.getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType);
+            latestBlock = (StatsNodeLeaf) StatsNode.getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType);
             latestStartTime = latestBlock.startTime;
             setAsDirty();
         }
@@ -98,10 +98,10 @@ public class StatsBlockRoot extends StatsBlock{
         if (insertPos == -1)
             throw new TimeseriesException("cannot insert datapoint into tree as no child block can manage target timestamp");
 
-        StatsBlock blockToInsert = getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
+        StatsNode blockToInsert = getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
         blockToInsert.setParent(this);
         blockToInsert.setStartTime(this.childStartTime.get(insertPos));
-        blockToInsert.setActive(blockToInsert instanceof StatsBlockInternal && (insertPos == childRID.size()-1));
+        blockToInsert.setActive(blockToInsert instanceof StatsNodeInternal && (insertPos == childRID.size()-1));
         blockToInsert.insert(data, strategy);
     }
 
@@ -123,7 +123,7 @@ public class StatsBlockRoot extends StatsBlock{
     }
 
     @Override
-    public void addChild(StatsBlock child) throws TimeseriesException {
+    public void addChild(StatsNode child) throws TimeseriesException {
         int insertPos = MathUtils.longBinarySearchLatter(childStartTime, child.startTime);
         if (insertPos < childStartTime.size() && childStartTime.get(insertPos) == child.startTime)
             throw new TimeseriesException("cannot insert child with existing startTime");
@@ -133,11 +133,11 @@ public class StatsBlockRoot extends StatsBlock{
 
         if (childRID.size() > degree){
             // create two internal block to hold root's data
-            StatsBlockInternal newInternalFormer = (StatsBlockInternal) manager.newArcadeDocument(PREFIX_STATSBLOCK+metric, document1 -> {
-                return new StatsBlockInternal(manager, document1, metric, degree, dataType);
+            StatsNodeInternal newInternalFormer = (StatsNodeInternal) manager.newArcadeDocument(PREFIX_STATS_NODE +metric, document1 -> {
+                return new StatsNodeInternal(manager, document1, metric, degree, dataType);
             });
-            StatsBlockInternal newInternalLatter = (StatsBlockInternal) manager.newArcadeDocument(PREFIX_STATSBLOCK+metric, document1 -> {
-                return new StatsBlockInternal(manager, document1, metric, degree, dataType);
+            StatsNodeInternal newInternalLatter = (StatsNodeInternal) manager.newArcadeDocument(PREFIX_STATS_NODE +metric, document1 -> {
+                return new StatsNodeInternal(manager, document1, metric, degree, dataType);
             });
 
             // former data transfer
@@ -145,7 +145,7 @@ public class StatsBlockRoot extends StatsBlock{
             newInternalFormer.childStartTime = new ArrayList<>(this.childStartTime.subList(0, degree));
             newInternalFormer.statistics = Statistics.newEmptyStats(dataType);
             for (RID rid : newInternalFormer.childRID)
-                newInternalFormer.statistics.merge(StatsBlock.getStatsBlockNonRoot(manager, rid, metric, degree, dataType).statistics);
+                newInternalFormer.statistics.merge(StatsNode.getStatsBlockNonRoot(manager, rid, metric, degree, dataType).statistics);
             newInternalFormer.save();
 
             // latter data transfer
@@ -154,7 +154,7 @@ public class StatsBlockRoot extends StatsBlock{
             newInternalLatter.childStartTime = new ArrayList<>(this.childStartTime.subList(degree, childRID.size()));
             newInternalLatter.statistics = Statistics.newEmptyStats(dataType);
             for (RID rid : newInternalLatter.childRID)
-                newInternalLatter.statistics.merge(StatsBlock.getStatsBlockNonRoot(manager, rid, metric, degree, dataType).statistics);
+                newInternalLatter.statistics.merge(StatsNode.getStatsBlockNonRoot(manager, rid, metric, degree, dataType).statistics);
             newInternalLatter.save();
 
             // remake root's data
@@ -170,7 +170,7 @@ public class StatsBlockRoot extends StatsBlock{
     }
 
     @Override
-    public void addLeafBlock(StatsBlockLeaf leaf) throws TimeseriesException {
+    public void addLeafBlock(StatsNodeLeaf leaf) throws TimeseriesException {
         // merge statistics
         statistics.merge(leaf.statistics);
 
@@ -180,10 +180,10 @@ public class StatsBlockRoot extends StatsBlock{
         else {
             // locate insert block
             int insertPos = MathUtils.longBinarySearchFormer(childStartTime, leaf.startTime);
-            StatsBlock blockToInsert = StatsBlock.getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
+            StatsNode blockToInsert = StatsNode.getStatsBlockNonRoot(manager, childRID.get(insertPos), metric, degree, dataType);
             blockToInsert.setStartTime(childStartTime.get(insertPos));
             blockToInsert.setParent(this);
-            blockToInsert.setActive(blockToInsert instanceof StatsBlockInternal && (insertPos == childRID.size() - 1));
+            blockToInsert.setActive(blockToInsert instanceof StatsNodeInternal && (insertPos == childRID.size() - 1));
             blockToInsert.addLeafBlock(leaf);
         }
 
@@ -193,7 +193,7 @@ public class StatsBlockRoot extends StatsBlock{
     @Override
     public Statistics aggregativeQuery(long startTime, long endTime) throws TimeseriesException {
         // get latest block stats
-        Statistics resultStats = StatsBlock.getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType).aggregativeQuery(startTime, endTime);
+        Statistics resultStats = StatsNode.getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType).aggregativeQuery(startTime, endTime);
 
         // if range out of root's statistics
         if (startTime > statistics.lastTime || endTime < statistics.firstTime){
@@ -222,13 +222,13 @@ public class StatsBlockRoot extends StatsBlock{
     }
 
     @Override
-    public DataPointSet periodQuery(long startTime, long endTime) throws TimeseriesException {
+    public DataPointList periodQuery(long startTime, long endTime, int limit) throws TimeseriesException {
         // period start from latest block
         if (startTime >= latestStartTime)
-            return getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType).periodQuery(startTime, endTime);
+            return getStatsBlockNonRoot(manager, latestRID, metric, degree, dataType).periodQuery(startTime, endTime, limit);
 
         // locate first block
         int startPos = MathUtils.longBinarySearchFormer(childStartTime, startTime);
-        return getStatsBlockNonRoot(manager, childRID.get(startPos), metric, degree, dataType).periodQuery(startTime, endTime);
+        return getStatsBlockNonRoot(manager, childRID.get(startPos), metric, degree, dataType).periodQuery(startTime, endTime, limit);
     }
 }

@@ -5,6 +5,7 @@ import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.exception.CommandSQLParsingException;
 import com.arcadedb.graph.MutableVertex;
 import com.arcadedb.graph.Vertex;
+import com.arcadedb.index.IndexCursor;
 import com.arcadedb.query.sql.executor.ResultSet;
 import com.arcadedb.schema.Property;
 import com.arcadedb.schema.Schema;
@@ -18,8 +19,7 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import java.util.*;
 
 public class ArcadedbUtils {
-    public static final String PREFIX_TAG = "_t";
-    public static final String PREFIX_PROPERTY = "_p";
+    public static final String PROP_OBJECT_ID = "oid";
     public static final HashMap<String, Database> databaseInstances = new HashMap<>();
 
     /**
@@ -93,44 +93,33 @@ public class ArcadedbUtils {
     /**
      * use between begin and commit
      *
-     * @param tags tags appended to objectType
+     * @param objectId unique id of object
+     * @param tags tags to write in new object
      * @return vertex asked
      */
-    public static Vertex getOrCreateSingleVertex(Database database, String objectType, Map<String, String> tags) throws TimeseriesException {
+    public static Vertex getOrCreateSingleVertex(Database database, String objectType, String objectId, Map<String, String> tags) throws TimeseriesException {
         // check object type
         boolean isNewVertex = !database.getSchema().existsType(objectType);
         VertexType metricVertex = database.getSchema().getOrCreateVertexType(objectType);
 
-        // check tags as properties
-        for (String tagKey : tags.keySet()) {
-            if (!metricVertex.existsProperty(PREFIX_TAG+tagKey)) {
-                isNewVertex = true;
-                Property newKey = metricVertex.createProperty(PREFIX_TAG+tagKey, Type.STRING);
-                newKey.createIndex(Schema.INDEX_TYPE.LSM_TREE, false);
-            }
+        // check object id
+        if (!metricVertex.existsProperty(PROP_OBJECT_ID)){
+            Property propObjectId = metricVertex.createProperty(PROP_OBJECT_ID, Type.STRING);
+            propObjectId.createIndex(Schema.INDEX_TYPE.LSM_TREE, true);
+            isNewVertex = true;
         }
 
         // find existing vertex
         if (!isNewVertex) {
-            String sql = getQuerySql(objectType, tags);
-            ResultSet rs;
-            try {
-                rs = database.query("SQL", sql);
-            } catch (CommandSQLParsingException e) {
-                throw new SQLParsingException("error parsing SQL " + sql);
-            }
-            while (rs.hasNext()) {
-                Optional<Vertex> optVertex = rs.next().getVertex();
-                if (optVertex.isEmpty()) continue;
-                Vertex vertex = optVertex.get();
-                if (getTags(vertex).size() == tags.size()) return vertex;
-            }
+            IndexCursor cursor = database.lookupByKey(objectType, PROP_OBJECT_ID, objectId);
+            if (cursor.hasNext()) return cursor.next().asVertex();
         }
 
         // create new vertex
         MutableVertex newVertex = database.newVertex(objectType);
-        for (Map.Entry<String, String> tag : tags.entrySet()) {
-            newVertex.set(PREFIX_TAG+tag.getKey(), tag.getValue());
+        newVertex.set(PROP_OBJECT_ID, objectId);
+        for (Map.Entry<String, String> tag : tags.entrySet()){
+            newVertex.set(tag.getKey(), tag.getValue());
         }
         newVertex.save();
         return newVertex;
@@ -139,67 +128,16 @@ public class ArcadedbUtils {
     /**
      * use between begin and commit
      *
-     * @param tags tags appended to objectType
+     * @param objectId unique id of object
      * @return vertex asked
      */
-    public static Vertex getSingleVertex(Database database, String objectType, Map<String, String> tags) throws TimeseriesException {
+    public static Vertex getSingleVertex(Database database, String objectType, String objectId) throws TimeseriesException {
         if (!database.getSchema().existsType(objectType))
             throw new TargetNotFoundException("objectType not exist");
 
-        String sql = getQuerySql(objectType, tags);
-        ResultSet rs;
-        try {
-            rs = database.query("SQL", sql);
-        } catch (CommandSQLParsingException e) {
-            throw new SQLParsingException("error parsing SQL " + sql);
-        }
-        while (rs.hasNext()) {
-            Optional<Vertex> optVertex = rs.next().getVertex();
-            if (optVertex.isEmpty()) continue;
-            Vertex vertex = optVertex.get();
-            if (getTags(vertex).size() == tags.size()) return vertex;
-        }
+        IndexCursor cursor = database.lookupByKey(objectType, PROP_OBJECT_ID, objectId);
+        if (cursor.hasNext()) return cursor.next().asVertex();
 
-        throw new TargetNotFoundException("object vertex under given tags not found");
-    }
-
-
-    public static ResultSet getVertices(Database database, String objectType, Map<String, String> tags) throws TimeseriesException {
-        if (!database.getSchema().existsType(objectType))
-            throw new TargetNotFoundException("objectType not exist");
-
-        ArrayList<Vertex> vertices = new ArrayList<>();
-        String sql = getQuerySql(objectType, tags);
-        ResultSet rs;
-        try {
-            rs = database.query("SQL", sql);
-        } catch (CommandSQLParsingException e) {
-            throw new SQLParsingException("error parsing SQL " + sql);
-        }
-        return rs;
-    }
-
-    private static String getQuerySql(String metric, Map<String, String> tags) {
-        StringBuilder sqlBuilder = new StringBuilder(String.format("SELECT FROM %s", metric));
-        if (!tags.isEmpty()) {
-            boolean firstTag = true;
-            for (Map.Entry<String, String> entry : tags.entrySet()) {
-                sqlBuilder.append(firstTag ? " WHERE " : " AND ");
-                firstTag = false;
-                sqlBuilder.append(String.format("%s='%s'", PREFIX_TAG+entry.getKey(), entry.getValue()));
-            }
-        }
-        return sqlBuilder.toString();
-    }
-
-    public static Map<String, String> getTags(Vertex object){
-        HashMap<String, String> tags = new HashMap<>();
-        for (Map.Entry<String, Object> property : object.toMap(false).entrySet()){
-            String key = property.getKey();
-            if (key.startsWith(PREFIX_TAG)){
-                tags.put(key.substring(PREFIX_TAG.length()), property.getValue().toString());
-            }
-        }
-        return tags;
+        throw new TargetNotFoundException("object under given id '"+objectId+"' not found");
     }
 }

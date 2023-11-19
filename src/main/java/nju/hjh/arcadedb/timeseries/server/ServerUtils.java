@@ -5,7 +5,7 @@ public class ServerUtils {
     public static final int SHOW_MESSAGE_LENGTH = 1000;
     public static final String DATABASE_DIR = "./databases/";
     public static final String CONNECTION_CLOSE = "close";
-    public static final long MAX_LIMIT_QUERY_OBJECTS = 1000;
+    public static final int MAX_LISTALL_SIZE = 1000;
 
     // message key
     public static class Key {
@@ -18,7 +18,8 @@ public class ServerUtils {
         public final static String STRATEGY_TYPE = IN_STRATEGY;
         public final static String STRATEGY_SEPARATOR = "sep";
         public final static String INSERT_QUERY_OBJECT = "obj";
-        public final static String INSERT_QUERY_TAG = "tag";
+        public final static String INSERT_TAG = "tag";
+        public final static String INSERT_TAG_OVERWRITE = "tow";
         public final static String INSERT_TIMESERIES_FORMAT = "fmt";
         public final static String INSERT_TIMESERIES = "ts";
         public final static String TIMESERIES_TIMESTAMP = "t";
@@ -34,6 +35,8 @@ public class ServerUtils {
         public final static String OUT_RESULT = "res";
         public final static String OUT_TIMESTAMP = TIMESERIES_TIMESTAMP;
         public final static String OUT_VALUE = TIMESERIES_VALUE;
+        public final static String OUT_TAG = INSERT_TAG;
+        public final static String OUT_METRIC = QUERY_METRIC;
         public final static String ERROR_CLASS = "c";
         public final static String ERROR_MESSAGE = "m";
     }
@@ -55,9 +58,10 @@ public class ServerUtils {
         public final static String MANAGE_TYPE_EXIST = "exist";
         public final static String TIMESERIES_FORMAT_DATAPOINT = "point";
         public final static String TIMESERIES_FORMAT_TIMEVALUE_ARRAY = "array";
+        public final static String TIMESERIES_FORMAT_TIMEVALUE_TABLE = "table";
+        public final static String TIMESERIES_FORMAT_NULL = "null";
         public final static boolean DEFAULT_QUERY_MULTIPLE = false;
-        public final static String QUERY_TYPE_OBJECTS = "objects";
-        public final static String QUERY_TYPE_METRICS = "metrics";
+        public final static String QUERY_TYPE_INFO = "info";
         public final static String METRIC_QUERY_TYPE_LISTALL = "list";
         public final static String METRIC_QUERY_TYPE_FIRST = "first";
         public final static String METRIC_QUERY_TYPE_LAST = "last";
@@ -66,5 +70,8 @@ public class ServerUtils {
         public final static String METRIC_QUERY_TYPE_MIN = "min";
         public final static String METRIC_QUERY_TYPE_SUM = "sum";
         public final static String METRIC_QUERY_TYPE_AVERAGE = "avg";
+        public final static String QUERY_OBJECT_PREFIX_RID = "rid{";
+        public final static String QUERY_OBJECT_PREFIX_OBJECT_ID = "oid{";
+        public final static String QUERY_OBJECT_PREFIX_SQL = "sql{";
     }
 }
