@@ -13,7 +13,6 @@ public abstract class StatsNode extends ArcadeDocument{
     public static final int DEFAULT_TREE_DEGREE = 32;
     public static final int MAX_DATA_BLOCK_SIZE = 4096;
     public static final String PREFIX_STATS_NODE = "_s";
-    public static final String PREFIX_DATA_NODE = "_d";
     public static final String PROP_NODE_INFO = "inf";
     public static final String PROP_NODE_DATA = "dat";
 
@@ -52,7 +51,7 @@ public abstract class StatsNode extends ArcadeDocument{
         });
 
         // leaf node
-        StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_DATA_NODE +metric, document2 ->{
+        StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_STATS_NODE +metric, document2 ->{
             StatsNodeLeaf leaf = new StatsNodeLeaf(manager, document2, metric, degree, dataType);
             leaf.dataList = new ArrayList<>();
             leaf.prevRID = manager.nullRID;

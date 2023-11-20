@@ -137,7 +137,7 @@ public class StatsNodeLeaf extends StatsNode {
             else
                 splitedSize = totalSize / 2;
 
-            StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_DATA_NODE + metric, document1 -> {
+            StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_STATS_NODE + metric, document1 -> {
                 return new StatsNodeLeaf(manager, document1, metric, degree, dataType);
             });
             newLeaf.setStartTime(this.dataList.get(splitedSize).timestamp);
@@ -235,7 +235,7 @@ public class StatsNodeLeaf extends StatsNode {
             }
 
             // create latter half leaf node
-            StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_DATA_NODE + metric, document1 -> {
+            StatsNodeLeaf newLeaf = (StatsNodeLeaf) manager.newArcadeDocument(PREFIX_STATS_NODE + metric, document1 -> {
                 return new StatsNodeLeaf(manager, document1, metric, degree, dataType);
             });
             newLeaf.setStartTime(dataList.get(splitedSize).timestamp);

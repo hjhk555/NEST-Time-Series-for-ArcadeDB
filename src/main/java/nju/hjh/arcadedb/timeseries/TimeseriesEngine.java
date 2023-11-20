@@ -73,13 +73,9 @@ public class TimeseriesEngine {
 
         // create object's metric document if not exist
         if (!database.getSchema().existsType(StatsNode.PREFIX_STATS_NODE +metricDocumentType)) {
-            DocumentType statsNodeType = database.getSchema().createDocumentType(StatsNode.PREFIX_STATS_NODE + metricDocumentType, STATS_NODE_BUCKETS);
+            DocumentType statsNodeType = database.getSchema().buildDocumentType().withName(StatsNode.PREFIX_STATS_NODE + metricDocumentType).withTotalBuckets(STATS_NODE_BUCKETS).create();
             statsNodeType.createProperty(StatsNode.PROP_NODE_INFO, Type.BINARY);
-        }
-        if (!database.getSchema().existsType(StatsNode.PREFIX_DATA_NODE +metricDocumentType)) {
-            DocumentType dataNodeType = database.getSchema().createDocumentType(StatsNode.PREFIX_DATA_NODE + metricDocumentType, STATS_NODE_BUCKETS);
-            dataNodeType.createProperty(StatsNode.PROP_NODE_INFO, Type.BINARY);
-            dataNodeType.createProperty(StatsNode.PROP_NODE_DATA, Type.BINARY);
+            statsNodeType.createProperty(StatsNode.PROP_NODE_DATA, Type.BINARY);
         }
 
         // get root of statsTree
