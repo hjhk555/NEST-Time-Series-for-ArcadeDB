@@ -48,7 +48,7 @@ public class StringDataPoint extends DataPoint{
 
     @Override
     public int realBytesRequired() {
-        int strLen = value.length();
+        int strLen = value.getBytes().length;
         return 8 + MathUtils.bytesToWriteUnsignedNumber(strLen) + strLen;
     }
 

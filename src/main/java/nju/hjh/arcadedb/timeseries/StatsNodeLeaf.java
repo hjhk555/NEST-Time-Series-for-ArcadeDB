@@ -23,7 +23,7 @@ public class StatsNodeLeaf extends StatsNode {
     public RID prevRID;
     public RID succRID;
     // for unfixed data type
-    public int dataBytesUseed;
+    public int dataBytesUsed;
 
     public StatsNodeLeaf(ArcadeDocumentManager manager, Document document, String metric, int degree, DataType dataType) throws TimeseriesException {
         super(manager, document, metric, degree, dataType);
@@ -37,9 +37,9 @@ public class StatsNodeLeaf extends StatsNode {
             for (int i = 0; i < statistics.count; i++)
                 dataList.add(DataPoint.getDataPointFromBinary(dataType, binary));
             if (!dataType.isFixed()){
-                dataBytesUseed = 0;
+                dataBytesUsed = 0;
                 for (DataPoint dataPoint : dataList)
-                    dataBytesUseed += dataPoint.realBytesRequired();
+                    dataBytesUsed += dataPoint.realBytesRequired();
             }
         }
     }
@@ -189,7 +189,7 @@ public class StatsNodeLeaf extends StatsNode {
             if (oldDP.getValue().equals(newDP.getValue()))
                 return; // no need to update
             dataList.set(insertPos, newDP);
-            dataBytesUseed += newDP.realBytesRequired() - oldDP.realBytesRequired();
+            dataBytesUsed += newDP.realBytesRequired() - oldDP.realBytesRequired();
             if (!statistics.update(oldDP, newDP)){
                 statistics = Statistics.countStats(dataType, dataList, true);
             }
@@ -197,19 +197,19 @@ public class StatsNodeLeaf extends StatsNode {
                 parent.updateStats(oldDP, newDP);
         }else {
             dataList.add(insertPos, data);
-            dataBytesUseed += data.realBytesRequired();
+            dataBytesUsed += data.realBytesRequired();
             statistics.insert(data);
             if (!isActive)
                 parent.appendStats(data);
         }
 
         // check if require split, to achieve split, each data point should use at most MAX_DATA_BLOCK_SIZE/2 bytes
-        if (dataBytesUseed > MAX_DATA_BLOCK_SIZE){
+        if (dataBytesUsed > MAX_DATA_BLOCK_SIZE){
             // locate split size
             int splitedBytes, splitedSize;
             if (isActive){
                 // fill this block as much as possible
-                splitedBytes = dataBytesUseed;
+                splitedBytes = dataBytesUsed;
                 splitedSize = dataList.size();
                 while (splitedBytes > MAX_DATA_BLOCK_SIZE){
                     splitedSize--;
@@ -219,7 +219,7 @@ public class StatsNodeLeaf extends StatsNode {
                 // try to split evenly.
                 splitedBytes = 0;
                 splitedSize = 0;
-                int halfBytes = dataBytesUseed / 2;
+                int halfBytes = dataBytesUsed / 2;
 
                 while (splitedBytes < halfBytes){
                     splitedBytes += dataList.get(splitedSize).realBytesRequired();
@@ -240,11 +240,11 @@ public class StatsNodeLeaf extends StatsNode {
             });
             newLeaf.setStartTime(dataList.get(splitedSize).timestamp);
             newLeaf.dataList = new ArrayList<>(this.dataList.subList(splitedSize, dataList.size()));
-            newLeaf.dataBytesUseed = this.dataBytesUseed - splitedBytes;
+            newLeaf.dataBytesUsed = this.dataBytesUsed - splitedBytes;
             newLeaf.statistics = Statistics.countStats(dataType, newLeaf.dataList, true);
 
             // re-calc stats
-            this.dataBytesUseed = splitedBytes;
+            this.dataBytesUsed = splitedBytes;
             this.dataList = new ArrayList<>(this.dataList.subList(0, splitedSize));
             statistics = Statistics.countStats(dataType, dataList, true);
 
