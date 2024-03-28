@@ -1,19 +1,22 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import nju.hjh.utils.exception.ExceptionSerializer;
-import nju.hjh.utils.log.Logger;
-import nju.hjh.arcadedb.timeseries.*;
-import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
+import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.UpdateStrategy;
+import nju.hjh.arcadedb.timeseries.btrdb.BtrdbEngine;
+import nju.hjh.arcadedb.timeseries.btrdb.DoubleStatistics;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
+import nju.hjh.utils.exception.ExceptionSerializer;
+import nju.hjh.utils.log.Logger;
 
 import java.util.Random;
 
-public class TimeseriesPeriodQueryTest {
+public class BtrdbInsertTest {
     public static void main(String[] args) {
-        Logger logger = Logger.getPureLogger("TSPeriod");
-        DatabaseFactory dbf = new DatabaseFactory("./databases/tsTest");
+        Logger logger = Logger.getPureLogger("btrdb_insert");
+        DatabaseFactory dbf = new DatabaseFactory("./databases/btrdbTest");
 
         Database database;
         if (dbf.exists()){
@@ -30,30 +33,30 @@ public class TimeseriesPeriodQueryTest {
         database.commit();
 
         logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
-        NestEngine tsEngine = new NestEngine(database);
+        BtrdbEngine tsEngine = new BtrdbEngine(database);
 
         tsEngine.begin();
         try {
             long startTime = System.currentTimeMillis();
 
-            final int testSize = 10000000;
+            final int testSize = 123456789;
             final int commitSize = 1000000;
 
             Random ran = new Random();
 
-            long periodStartTime = System.currentTimeMillis();
+            //long periodStartTime = System.currentTimeMillis();
 
             for (int i=0; i<testSize; i++){
                 if (i > 0 && i % commitSize == 0) {
                     tsEngine.commit();
 
-                    long periodElapsed = System.currentTimeMillis() - periodStartTime;
-                    periodStartTime = System.currentTimeMillis();
-                    logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
+                    //long periodElapsed = System.currentTimeMillis() - periodStartTime;
+                    //periodStartTime = System.currentTimeMillis();
+                    //logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", i, i);
             }
 
             tsEngine.commit();
@@ -66,26 +69,14 @@ public class TimeseriesPeriodQueryTest {
             for (int i=0; i<20; i++){
                 int queryStart = ran.nextInt(testSize);
                 int queryEnd = ran.nextInt(queryStart, testSize);
-                logger.logOnStdout("querying [%d, %d]:", queryStart, queryEnd);
+                long ans = (long) (queryEnd + queryStart) * (queryEnd - queryStart + 1) / 2;
+
                 startTime = System.currentTimeMillis();
 
-                DataPointList rs = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
-                DataPoint dp;
-                int cur = queryStart;
-                while ((dp = rs.next()) != null){
-                    if (dp instanceof LongDataPoint longDP){
-                        if (longDP.value != cur)
-                            logger.logOnStderr("result not match at %d", cur);
-                    }
-                    cur++;
-                }
-
-                cur--;
-                if (cur != queryEnd)
-                    logger.logOnStderr("result should end at %d but end at %d", queryEnd, cur);
-
+                DoubleStatistics statistics = tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
+                double sum = statistics.sum;
                 elapsed = System.currentTimeMillis() - startTime;
-                logger.logOnStdout("query [%d, %d] finished in %d ms", queryStart, queryEnd, elapsed);
+                logger.logOnStdout("query [%d, %d] get %s in %d ms with correctSum=%d", queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed, ans, sum == ans);
             }
 
             tsEngine.commit();

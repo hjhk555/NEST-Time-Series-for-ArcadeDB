@@ -6,7 +6,7 @@ import nju.hjh.utils.log.Logger;
 import nju.hjh.arcadedb.timeseries.DataPointList;
 import nju.hjh.arcadedb.timeseries.DataType;
 import nju.hjh.arcadedb.timeseries.UpdateStrategy;
-import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
+import nju.hjh.arcadedb.timeseries.NestEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.UnfixedStatistics;
@@ -48,7 +48,7 @@ public class TimeseriesUnfixedTest {
         database.commit();
 
         logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
-        TimeseriesEngine tsEngine = new TimeseriesEngine(database);
+        NestEngine tsEngine = new NestEngine(database);
 
         tsEngine.begin();
         try {

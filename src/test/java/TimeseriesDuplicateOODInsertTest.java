@@ -31,7 +31,7 @@ public class TimeseriesDuplicateOODInsertTest {
         database.commit();
 
         logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
-        TimeseriesEngine tsEngine = new TimeseriesEngine(database);
+        NestEngine tsEngine = new NestEngine(database);
 
         tsEngine.begin();
         try {

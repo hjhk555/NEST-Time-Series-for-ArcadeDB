@@ -10,7 +10,7 @@ import com.arcadedb.graph.Vertex;
 import com.arcadedb.query.sql.executor.ResultSet;
 import nju.hjh.arcadedb.timeseries.DataPointList;
 import nju.hjh.arcadedb.timeseries.DataType;
-import nju.hjh.arcadedb.timeseries.TimeseriesEngine;
+import nju.hjh.arcadedb.timeseries.NestEngine;
 import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.DoubleDataPoint;
@@ -147,7 +147,7 @@ public class MessageHandler {
     }
 
     private JSONObject handleInsert(Database database, JSONArray insertList, Map<String, UpdateStrategy> strategyMap) throws Exception {
-        TimeseriesEngine tsEngine = TimeseriesEngine.getInstance(database);
+        NestEngine tsEngine = NestEngine.getInstance(database);
         // start transaction
         synchronized (database) {
             tsEngine.begin();
@@ -180,8 +180,8 @@ public class MessageHandler {
                             if (tagKey.equals(ArcadedbUtils.PROP_OBJECT_ID))
                                 throw new MessageParsingException("cannot use '"+ArcadedbUtils.PROP_OBJECT_ID+"' as tag key");
 
-                            if (tagKey.startsWith(TimeseriesEngine.PREFIX_METRIC))
-                                throw new MessageParsingException("cannot use '"+TimeseriesEngine.PREFIX_METRIC+"' as tag prefix");
+                            if (tagKey.startsWith(NestEngine.PREFIX_METRIC))
+                                throw new MessageParsingException("cannot use '"+ NestEngine.PREFIX_METRIC+"' as tag prefix");
 
                             if (tag.getValue() instanceof String tagValue) {
                                 tags.put(tagKey, tagValue);
@@ -243,7 +243,7 @@ public class MessageHandler {
         return jsonRes;
     }
 
-    public void insertArrayFormatTimeseries(TimeseriesEngine tsEngine, MutableVertex object, JSONObject metrics, Map<String, UpdateStrategy> strategyMap, int insertIndex) throws Exception {
+    public void insertArrayFormatTimeseries(NestEngine tsEngine, MutableVertex object, JSONObject metrics, Map<String, UpdateStrategy> strategyMap, int insertIndex) throws Exception {
         for (String metricName : metrics.keySet()) {
             JSONObject timeValue = metrics.getJSONObject(metricName);
             if (timeValue == null)
@@ -297,7 +297,7 @@ public class MessageHandler {
         }
     }
 
-    public void insertDatapointFormatTimeseries(TimeseriesEngine tsEngine, MutableVertex object, JSONArray datapoints, Map<String, UpdateStrategy> strategyMap, int insertIndex) throws Exception {
+    public void insertDatapointFormatTimeseries(NestEngine tsEngine, MutableVertex object, JSONArray datapoints, Map<String, UpdateStrategy> strategyMap, int insertIndex) throws Exception {
         for (int dpIndex = 0; dpIndex < datapoints.size(); dpIndex++) {
             JSONObject datapoint = datapoints.getJSONObject(dpIndex);
             if (datapoint == null)
@@ -345,7 +345,7 @@ public class MessageHandler {
         }
     }
 
-    public void insertTableFormatTimeseries(TimeseriesEngine tsEngine, MutableVertex object, JSONObject timeMetrics, Map<String, UpdateStrategy> strategyMap, int insertIndex) throws Exception {
+    public void insertTableFormatTimeseries(NestEngine tsEngine, MutableVertex object, JSONObject timeMetrics, Map<String, UpdateStrategy> strategyMap, int insertIndex) throws Exception {
         JSONArray jsonTimestamps = timeMetrics.getJSONArray(ServerUtils.Key.TIMESERIES_TIMESTAMP);
         if (jsonTimestamps == null)
             throw new MissingFieldException(ServerUtils.Key.TIMESERIES_TIMESTAMP, String.format("insert#%d", insertIndex));
@@ -494,7 +494,7 @@ public class MessageHandler {
     }
 
     private JSONObject getSeparateQueryResult(Database database, Set<Vertex> objects, String queryType, String metric, JSONObject jsonQuery) throws TimeseriesException {
-        TimeseriesEngine tsEngine = TimeseriesEngine.getInstance(database);
+        NestEngine tsEngine = NestEngine.getInstance(database);
         JSONObject jsonResult = new JSONObject();
 
         if (queryType.equals(ServerUtils.Value.QUERY_TYPE_INFO)) {
@@ -507,7 +507,7 @@ public class MessageHandler {
                 JSONObject objectInfo = new JSONObject();
                 JSONObject tags = new JSONObject();
                 for (Map.Entry<String, Object> prop : object.toMap(false).entrySet()){
-                    if (!prop.getKey().equals(ArcadedbUtils.PROP_OBJECT_ID) && !prop.getKey().startsWith(TimeseriesEngine.PREFIX_METRIC))
+                    if (!prop.getKey().equals(ArcadedbUtils.PROP_OBJECT_ID) && !prop.getKey().startsWith(NestEngine.PREFIX_METRIC))
                         tags.put(prop.getKey(), prop.getValue());
                 }
                 objectInfo.put(ServerUtils.Key.OUT_TAG, tags);
@@ -680,7 +680,7 @@ public class MessageHandler {
     }
 
     private JSONObject getMultipleQueryResult(Database database, Set<Vertex> objects, String queryType, String metric, JSONObject jsonQuery) throws TimeseriesException {
-        TimeseriesEngine tsEngine = TimeseriesEngine.getInstance(database);
+        NestEngine tsEngine = NestEngine.getInstance(database);
         JSONObject jsonRet = new JSONObject();
         jsonRet.put(ServerUtils.Key.OUT_SUCCESS, true);
 

@@ -33,7 +33,7 @@ public class TimeseriesPersistentTest {
 
         Vertex testVertex = database.lookupByRID(new RID(database, 1, 14), false).asVertex();
         logger.logOnStdout("tested vertex rid is "+testVertex.getIdentity());
-        TimeseriesEngine tsEngine = new TimeseriesEngine(database);
+        NestEngine tsEngine = new NestEngine(database);
 
         tsEngine.begin();
         try {

@@ -14,28 +14,28 @@ import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 
 import java.util.*;
 
-public class TimeseriesEngine {
+public class NestEngine {
     public static final String PREFIX_METRIC = "_m";
     public static final int STATS_NODE_BUCKETS = 1;
     public final Database database;
     public final ArcadeDocumentManager manager;
 
     // created instances of TimeseriesEngine
-    public static final HashMap<Database, TimeseriesEngine> engineInstances = new HashMap<>();
+    public static final HashMap<Database, NestEngine> engineInstances = new HashMap<>();
 
-    public TimeseriesEngine(Database database) {
+    public NestEngine(Database database) {
         this.database = database;
         this.manager = ArcadeDocumentManager.getInstance(database);
     }
 
-    public static TimeseriesEngine getInstance(Database database){
+    public static NestEngine getInstance(Database database){
         synchronized (engineInstances) {
-            TimeseriesEngine engine = engineInstances.get(database);
+            NestEngine engine = engineInstances.get(database);
             if (engine != null) {
                 // check if engine has same database
                 if (engine.database == database) return engine;
             }
-            engine = new TimeseriesEngine(database);
+            engine = new NestEngine(database);
             engineInstances.put(database, engine);
             return engine;
         }

@@ -18,7 +18,7 @@ public class Logger {
     ArrayList<LogTag> tagList = new ArrayList<>();
     boolean autoFlush = true;
 
-    public static String getSpaceString(int len){
+    private static String getSpaceString(int len){
         StringBuilder builder = new StringBuilder();
         for (int i=0; i<len; i++)
             builder.append(" ");
