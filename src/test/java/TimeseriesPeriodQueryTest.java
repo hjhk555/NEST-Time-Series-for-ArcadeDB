@@ -36,7 +36,7 @@ public class TimeseriesPeriodQueryTest {
         try {
             long startTime = System.currentTimeMillis();
 
-            final int testSize = 10000000;
+            final int testSize = 123456789;
             final int commitSize = 1000000;
 
             Random ran = new Random();

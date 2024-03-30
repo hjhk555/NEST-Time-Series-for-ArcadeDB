@@ -2,13 +2,13 @@ package nju.hjh.arcadedb.timeseries.datapoint;
 
 import com.arcadedb.database.Binary;
 import nju.hjh.arcadedb.timeseries.MathUtils;
-import nju.hjh.arcadedb.timeseries.StatsNode;
+import nju.hjh.arcadedb.timeseries.NestNode;
 import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 public class StringDataPoint extends DataPoint{
-    public static int MAX_LENGTH = StatsNode.MAX_DATA_BLOCK_SIZE/2 - MathUtils.bytesToWriteUnsignedNumber(StatsNode.MAX_DATA_BLOCK_SIZE/2);
+    public static int MAX_LENGTH = NestNode.MAX_DATA_BLOCK_SIZE/2 - MathUtils.bytesToWriteUnsignedNumber(NestNode.MAX_DATA_BLOCK_SIZE/2);
     public String value;
 
     public StringDataPoint(long timestamp, String value){

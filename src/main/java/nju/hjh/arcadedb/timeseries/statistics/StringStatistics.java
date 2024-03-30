@@ -7,12 +7,20 @@ import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
+import java.util.NavigableMap;
 
 public class StringStatistics extends FixedStatistics{
     public String firstValue;
     public String lastValue;
 
     public StringStatistics(){
+        firstValue = "";
+        lastValue = "";
+    }
+
+    @Override
+    public void clear() {
+        super.clear();
         firstValue = "";
         lastValue = "";
     }
@@ -59,33 +67,19 @@ public class StringStatistics extends FixedStatistics{
     }
 
     @Override
-    public void insertDataList(List<DataPoint> dataList, boolean isTimeOrdered) {
-        if (dataList.size() == 0) return;
+    public void insertAll(NavigableMap<Long, DataPoint> datapoints) {
+        if (datapoints.size() == 0) return;
 
-        count += dataList.size();
-        if (isTimeOrdered) {
-            StringDataPoint listFirst = (StringDataPoint) dataList.get(0);
-            StringDataPoint listLast = (StringDataPoint) dataList.get(dataList.size()-1);
-            if (listFirst.timestamp < firstTime) {
-                firstTime = listFirst.timestamp;
-                firstValue = listFirst.value;
-            }
-            if (listLast.timestamp > lastTime) {
-                lastTime = listLast.timestamp;
-                lastValue = listLast.value;
-            }
-        }else{
-            for (DataPoint dataPoint : dataList) {
-                String value = ((StringDataPoint) dataPoint).value;
-                if (dataPoint.timestamp < firstTime){
-                    firstTime = dataPoint.timestamp;
-                    firstValue = value;
-                }
-                if (dataPoint.timestamp > lastTime){
-                    lastTime = dataPoint.timestamp;
-                    lastValue = value;
-                }
-            }
+        count += datapoints.size();
+        StringDataPoint listFirst = (StringDataPoint) datapoints.firstEntry().getValue();
+        StringDataPoint listLast = (StringDataPoint) datapoints.lastEntry().getValue();
+        if (listFirst.timestamp < firstTime) {
+            firstTime = listFirst.timestamp;
+            firstValue = listFirst.value;
+        }
+        if (listLast.timestamp > lastTime) {
+            lastTime = listLast.timestamp;
+            lastValue = listLast.value;
         }
     }
 

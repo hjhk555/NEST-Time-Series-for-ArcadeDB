@@ -5,7 +5,7 @@ import nju.hjh.arcadedb.timeseries.DataType;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
-import java.util.List;
+import java.util.NavigableMap;
 
 public abstract class Statistics {
     public long count;
@@ -34,12 +34,6 @@ public abstract class Statistics {
         };
     }
 
-    public static Statistics countStats(DataType type, List<DataPoint> dataList, boolean isTimeOrdered) throws TimeseriesException {
-        Statistics stats = newEmptyStats(type);
-        stats.insertDataList(dataList, isTimeOrdered);
-        return stats;
-    }
-
     public static int maxBytesRequired(DataType type) throws TimeseriesException {
         if (!type.isFixed()) return UnfixedStatistics.maxBytesRequired();
         return switch (type.baseType){
@@ -48,6 +42,11 @@ public abstract class Statistics {
             case DOUBLE -> DoubleStatistics.maxBytesRequired();
             default -> throw new TimeseriesException("invalid data type");
         };
+    }
+    public void clear(){
+        count = 0;
+        firstTime = Long.MAX_VALUE;
+        lastTime = Long.MIN_VALUE;
     }
 
     // insert single dataPoint into statistics
@@ -59,8 +58,8 @@ public abstract class Statistics {
      * @return true if success, false if re-stats needed
      */
     public abstract boolean update(DataPoint oldDP, DataPoint newDP) throws TimeseriesException;
-    // insert list of dataPoints into statistics
-    public abstract void insertDataList(List<DataPoint> dataList, boolean isTimeOrdered);
+    // insert dataPoints into statistics
+    public abstract void insertAll(NavigableMap<Long, DataPoint> dataList);
     // merge 2 statistics together
     public abstract void merge(Statistics stats) throws TimeseriesException;
     // serialize statistics into binary

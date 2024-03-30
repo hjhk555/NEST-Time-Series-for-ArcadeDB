@@ -6,6 +6,7 @@ import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
+import java.util.NavigableMap;
 
 public class LongStatistics extends NumericStatistics{
     public long firstValue;
@@ -85,46 +86,35 @@ public class LongStatistics extends NumericStatistics{
     }
 
     @Override
-    public void insertDataList(List<DataPoint> dataList, boolean isTimeOrdered) {
-        if (dataList.size() == 0) return;
+    public void clear() {
+        super.clear();
+        sum = 0;
+        max = Long.MIN_VALUE;
+        min = Long.MAX_VALUE;
+    }
 
-        count += dataList.size();
-        if (isTimeOrdered) {
-            LongDataPoint listFirst = (LongDataPoint) dataList.get(0);
-            LongDataPoint listLast = (LongDataPoint) dataList.get(dataList.size()-1);
-            if (listFirst.timestamp < firstTime) {
-                firstTime = listFirst.timestamp;
-                firstValue = listFirst.value;
-            }
-            if (listLast.timestamp > lastTime) {
-                lastTime = listLast.timestamp;
-                lastValue = listLast.value;
-            }
-            for (DataPoint dataPoint : dataList) {
-                long value = ((LongDataPoint) dataPoint).value;
-                sum += value;
-                if (value > max)
-                    max = value;
-                if (value < min)
-                    min = value;
-            }
-        }else{
-            for (DataPoint dataPoint : dataList) {
-                long value = ((LongDataPoint) dataPoint).value;
-                sum += value;
-                if (value > max)
-                    max = value;
-                else if (value < min)
-                    min = value;
-                if (dataPoint.timestamp < firstTime){
-                    firstTime = dataPoint.timestamp;
-                    firstValue = value;
-                }
-                if (dataPoint.timestamp > lastTime){
-                    lastTime = dataPoint.timestamp;
-                    lastValue = value;
-                }
-            }
+    @Override
+    public void insertAll(NavigableMap<Long, DataPoint> datapoints) {
+        if (datapoints.size() == 0) return;
+
+        count += datapoints.size();
+        LongDataPoint listFirst = (LongDataPoint) datapoints.firstEntry().getValue();
+        LongDataPoint listLast = (LongDataPoint) datapoints.lastEntry().getValue();
+        if (listFirst.timestamp < firstTime) {
+            firstTime = listFirst.timestamp;
+            firstValue = listFirst.value;
+        }
+        if (listLast.timestamp > lastTime) {
+            lastTime = listLast.timestamp;
+            lastValue = listLast.value;
+        }
+        for (DataPoint dataPoint : datapoints.values()) {
+            long value = ((LongDataPoint) dataPoint).value;
+            sum += value;
+            if (value > max)
+                max = value;
+            if (value < min)
+                min = value;
         }
     }
 

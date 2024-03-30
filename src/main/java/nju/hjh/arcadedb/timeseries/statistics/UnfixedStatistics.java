@@ -7,6 +7,7 @@ import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
 import java.util.List;
+import java.util.NavigableMap;
 
 public class UnfixedStatistics extends Statistics{
     public UnfixedStatistics() {
@@ -36,28 +37,22 @@ public class UnfixedStatistics extends Statistics{
     }
 
     @Override
-    public void insertDataList(List<DataPoint> dataList, boolean isTimeOrdered) {
-        if (dataList.size() == 0) return;
+    public void clear() {
+        super.clear();
+    }
 
-        count += dataList.size();
-        if (isTimeOrdered) {
-            DataPoint listFirst = dataList.get(0);
-            DataPoint listLast = dataList.get(dataList.size()-1);
-            if (listFirst.timestamp < firstTime) {
-                firstTime = listFirst.timestamp;
-            }
-            if (listLast.timestamp > lastTime) {
-                lastTime = listLast.timestamp;
-            }
-        }else{
-            for (DataPoint dataPoint : dataList) {
-                if (dataPoint.timestamp < firstTime){
-                    firstTime = dataPoint.timestamp;
-                }
-                if (dataPoint.timestamp > lastTime){
-                    lastTime = dataPoint.timestamp;
-                }
-            }
+    @Override
+    public void insertAll(NavigableMap<Long, DataPoint> datapoints) {
+        if (datapoints.size() == 0) return;
+
+        count += datapoints.size();
+        DataPoint listFirst = datapoints.firstEntry().getValue();
+        DataPoint listLast = datapoints.lastEntry().getValue();
+        if (listFirst.timestamp < firstTime) {
+            firstTime = listFirst.timestamp;
+        }
+        if (listLast.timestamp > lastTime) {
+            lastTime = listLast.timestamp;
         }
     }
 

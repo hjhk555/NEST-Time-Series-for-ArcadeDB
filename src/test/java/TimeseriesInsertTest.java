@@ -9,6 +9,7 @@ import nju.hjh.arcadedb.timeseries.*;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
+import org.assertj.core.internal.Longs;
 
 import java.util.Random;
 
@@ -49,13 +50,13 @@ public class TimeseriesInsertTest {
                 if (i > 0 && i % commitSize == 0) {
                     tsEngine.commit();
 
-//                    long periodElapsed = System.currentTimeMillis() - periodStartTime;
-//                    periodStartTime = System.currentTimeMillis();
-//                    logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
+                    long periodElapsed = System.currentTimeMillis() - periodStartTime;
+                    periodStartTime = System.currentTimeMillis();
+                    logger.logOnStdout("inserted datapoints range=[%d, %d) using %d ms", i-commitSize , i, periodElapsed);
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.DOUBLE, new DoubleDataPoint(i, i), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();
@@ -72,8 +73,8 @@ public class TimeseriesInsertTest {
 
                 startTime = System.currentTimeMillis();
 
-                DoubleStatistics statistics = (DoubleStatistics) tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
-                double sum = statistics.sum;
+                LongStatistics statistics = (LongStatistics) tsEngine.aggregativeQuery(testVertex, "status", queryStart, queryEnd);
+                long sum = statistics.sum;
                 elapsed = System.currentTimeMillis() - startTime;
                 logger.logOnStdout("query [%d, %d] get %s in %d ms with correctSum=%d, correct=%s", queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed, ans, sum == ans);
             }
