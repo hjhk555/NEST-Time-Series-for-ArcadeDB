@@ -94,8 +94,8 @@ public class TimeseriesOODTest {
 
             tsEngine.begin();
             for (int i=0; i<20; i++){
-                int queryStart = ran.nextInt(testSize);
-                int queryEnd = ran.nextInt(queryStart, testSize);
+                int queryStart = ran.nextInt(testSize-100000);
+                int queryEnd = queryStart+100000;
                 long ans = (long) (queryEnd + queryStart) * (queryEnd - queryStart + 1) / 2;
 
                 startTime = System.currentTimeMillis();
@@ -104,6 +104,15 @@ public class TimeseriesOODTest {
                 long sum = statistics.sum;
                 elapsed = System.currentTimeMillis() - startTime;
                 logger.logOnStdout("query [%d, %d] get %s in %d ms with correctSum=%d, correct=%s", queryStart, queryEnd, statistics.toPrettyPrintString(), elapsed, ans, sum == ans);
+
+                DataPointList list = tsEngine.periodQuery(testVertex, "status", queryStart, queryEnd);
+                int cur = queryStart;
+                while (list.hasNext()) {
+                    if (list.next().timestamp != cur++) {
+                        logger.logOnStderr("detail check failed");
+                        break;
+                    }
+                }
             }
             tsEngine.commit();
         } catch (TimeseriesException e) {

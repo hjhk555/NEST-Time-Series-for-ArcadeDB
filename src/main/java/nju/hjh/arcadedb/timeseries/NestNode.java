@@ -12,7 +12,7 @@ public abstract class NestNode{
     public static final int MAX_DATA_BLOCK_SIZE = 4096;
     public static final long MAX_TIMESTAMP = Long.MAX_VALUE;
     public static final int LATEST_SPLIT_RATIO = 90;
-    public static final int OLD_SPLIT_RATIO = 50;
+    public static final int OLD_SPLIT_RATIO = 60;
     public static final RID NULL_RID = new RID(null, -1, -1);
     public static final String PROP_NODE_BINARY = "bin";
 

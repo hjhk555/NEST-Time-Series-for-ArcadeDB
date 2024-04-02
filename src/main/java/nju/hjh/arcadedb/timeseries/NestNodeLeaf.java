@@ -100,7 +100,7 @@ public class NestNodeLeaf extends NestNode {
         if (datapoints.size() > maxdataSize){
             // split into 2 blocks
             int totalSize = datapoints.size();
-            int splitedSize = Math.min(maxdataSize, totalSize*(endTimestamp == MAX_TIMESTAMP ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100);
+            int splitedSize = Math.min(maxdataSize, totalSize*(!succRID.isValid() ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100);
 
             TreeMap<Long, DataPoint> newDatapoints = new TreeMap<>();
             for(int i=0; i<totalSize-splitedSize; i++){
@@ -158,7 +158,7 @@ public class NestNodeLeaf extends NestNode {
         // check if require split, to achieve split, each data point should use at most MAX_DATA_BLOCK_SIZE/2 bytes
         if (dataBytesUsed > MAX_DATA_BLOCK_SIZE){
             // locate split size
-            int splitedBytes, targetBytes = Math.min(MAX_DATA_BLOCK_SIZE, dataBytesUsed*(endTimestamp == MAX_TIMESTAMP ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100);
+            int splitedBytes, targetBytes = Math.min(MAX_DATA_BLOCK_SIZE, dataBytesUsed*(!succRID.isValid() ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100);
             // fill this block as much as possible
             splitedBytes = dataBytesUsed;
             TreeMap<Long, DataPoint> newDatapoints = new TreeMap<>();
