@@ -68,6 +68,7 @@ public class NestNodeLeaf extends NestNode {
 
     @Override
     public void insertLeafToTree(NestNodeLeaf leaf, BatchInsertionCallback batchInsertionCallback, ReachLeafCallback reachLeafCallback, SplitCallback splitCallback) throws TimeseriesException {
+        batchInsertionCallback.call(leaf.statistics);
         reachLeafCallback.call();
     }
 
