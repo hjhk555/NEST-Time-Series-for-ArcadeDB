@@ -98,6 +98,7 @@ public class NestEngine {
             metricRID.putLong(treeRoot.document.getIdentity().getPosition());
             object.set(metricRIDField, metricRID.toByteArray());
             object.save();
+            rootCache.put(treeRoot.document.getIdentity(), treeRoot);
         }else{
             Binary metricRID = new Binary(metricRidBytes);
             RID rid = new RID(database, metricRID.getInt(), metricRID.getLong());

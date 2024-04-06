@@ -15,7 +15,7 @@ import java.net.Socket;
 public class ArcadeTSDBClient{
     final String hostIP;
     final int hostPort;
-    final Logger logger = Logger.getPureLogger("TSDBClient");;
+    final Logger logger = Logger.getPureLogger("TSDBClient");
     Socket socket = null;
     PrintWriter writer = null;
     BufferedReader reader = null;
