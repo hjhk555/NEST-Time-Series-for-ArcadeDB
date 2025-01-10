@@ -3,7 +3,7 @@ import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
 import nju.hjh.utils.exception.ExceptionSerializer;
 import nju.hjh.utils.log.Logger;
-import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.NestEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.DoubleDataPoint;
@@ -55,7 +55,7 @@ public class TimeseriesDoubleTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.DOUBLE, new DoubleDataPoint(i, i/16.0), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", i, i/16.0, UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();

@@ -2,7 +2,6 @@ package nju.hjh.arcadedb.timeseries.client;
 
 import com.alibaba.fastjson2.JSONObject;
 import nju.hjh.arcadedb.timeseries.client.gui.MainGUI;
-import nju.hjh.arcadedb.timeseries.server.ServerUtils;
 import nju.hjh.utils.exception.ExceptionSerializer;
 import nju.hjh.utils.log.Logger;
 
@@ -84,8 +83,11 @@ public class ArcadeTSDBClient{
         if (socket == null || socket.isClosed())
             return null;
 
-        String msg = json.toJSONString();
-        logger.logSilent("to server: %s", (msg.length() > ClientUtils.SHOW_MESSAGE_LENGTH ? msg.substring(0, ClientUtils.SHOW_MESSAGE_LENGTH) + " ...(total " + msg.length() + " characters)" : msg));
+        return sendMsgAndWaitResult(json.toJSONString());
+    }
+
+    public String sendMsgAndWaitResult(String msg){
+        //logger.logSilent("to server: %s", (msg.length() > ClientUtils.SHOW_MESSAGE_LENGTH ? msg.substring(0, ClientUtils.SHOW_MESSAGE_LENGTH) + " ...(total " + msg.length() + " characters)" : msg));
         writer.write(msg + "\n");
         writer.flush();
 
@@ -98,7 +100,7 @@ public class ArcadeTSDBClient{
         }
 
         if (ret != null) {
-            logger.logSilent("from server: %s", (ret.length() > ClientUtils.SHOW_MESSAGE_LENGTH ? ret.substring(0, ClientUtils.SHOW_MESSAGE_LENGTH) + " ...(total " + ret.length() + " characters)" : ret));
+            //logger.logSilent("from server: %s", (ret.length() > ClientUtils.SHOW_MESSAGE_LENGTH ? ret.substring(0, ClientUtils.SHOW_MESSAGE_LENGTH) + " ...(total " + ret.length() + " characters)" : ret));
         } else {
             logger.logOnStderr("socket closed from server");
         }

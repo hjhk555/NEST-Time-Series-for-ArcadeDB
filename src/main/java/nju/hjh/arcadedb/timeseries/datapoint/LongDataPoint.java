@@ -8,6 +8,8 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 public class LongDataPoint extends DataPoint{
     public long value;
 
+    public LongDataPoint() {}
+
     public LongDataPoint(long timestamp, long value){
         this.timestamp = timestamp;
         this.value = value;
@@ -17,6 +19,12 @@ public class LongDataPoint extends DataPoint{
     public void serialize(Binary binary) {
         binary.putLong(timestamp);
         binary.putLong(value);
+    }
+
+    @Override
+    public void deserialize(Binary binary) {
+        timestamp = binary.getLong();
+        value = binary.getLong();
     }
 
     @Override
@@ -41,6 +49,10 @@ public class LongDataPoint extends DataPoint{
         }else{
             throw new TimeseriesException("LongDataPoint can only be updated by LongDataPoint");
         }
+    }
+
+    public static int maxBytesRequired(){
+        return 16;
     }
 
     @Override

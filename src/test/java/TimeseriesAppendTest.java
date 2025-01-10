@@ -2,7 +2,7 @@ import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
 import nju.hjh.arcadedb.timeseries.DataPointList;
-import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.NestEngine;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
@@ -79,7 +79,7 @@ public class TimeseriesAppendTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.STRING, new StringDataPoint(i/10, strList.get(i)), UpdateStrategy.APPEND);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", i/10, strList.get(i), UpdateStrategy.APPEND);
             }
 
             tsEngine.commit();

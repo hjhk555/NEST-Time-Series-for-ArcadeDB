@@ -6,6 +6,7 @@ import com.arcadedb.database.MutableDocument;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 
 public class NestNodeInternal extends NestNode {
     public static final byte BLOCK_TYPE = 1;
@@ -34,7 +35,7 @@ public class NestNodeInternal extends NestNode {
     public void serializeIfDirty() throws TimeseriesException {
         if (!dirty) return;
         for(int i=0; i<childCount; i++) if (children[i].node != null) children[i].node.serializeIfDirty();
-        int infoSize = HEADER_WITHOUT_STATS_AND_CHILD + degree * (CHILD_SIZE_WITHOUT_STATISTICS + Statistics.maxBytesRequired(dataType));
+        int infoSize = HEADER_WITHOUT_STATS_AND_CHILD + degree * (CHILD_SIZE_WITHOUT_STATISTICS + dataType.maxStatisticsBytes());
 
         MutableDocument mutableDocument = document.modify();
         Binary binary = new Binary(infoSize, false);
@@ -93,7 +94,7 @@ public class NestNodeInternal extends NestNode {
             int splitCount = childCount*(endTimestamp == MAX_TIMESTAMP ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100;
             // create new node
             MutableDocument newDoc = document.getDatabase().newDocument(documentType);
-            NestNodeInternal newInternal = new NestNodeInternal(newDoc, documentType, degree, dataType, children[splitCount].beginTime, endTimestamp, Statistics.newEmptyStats(dataType));
+            NestNodeInternal newInternal = new NestNodeInternal(newDoc, documentType, degree, dataType, children[splitCount].beginTime, endTimestamp, dataType.newEmptyStatistics());
             newInternal.dirty = true;
             for(int i=splitCount; i<childCount; i++){
                 newInternal.children[i-splitCount] = children[i];
@@ -103,7 +104,7 @@ public class NestNodeInternal extends NestNode {
             endTimestamp = children[splitCount].beginTime -1;
             childCount = splitCount;
             if (statistics != null){
-                statistics.clear();;
+                statistics.clear();
                 for(int i=0; i<childCount; i++) statistics.merge(children[i].statistics);
             }
             newInternal.serializeIfDirty();
@@ -142,7 +143,7 @@ public class NestNodeInternal extends NestNode {
         int pos = MathUtils.longBinarySearchFormer(children, 0, childCount, startTime, child -> child.beginTime);
         // check if start from first
         if (pos == -1) pos = 0;
-        Statistics resultStats = Statistics.newEmptyStats(dataType);
+        Statistics resultStats = dataType.newEmptyStatistics();
         for(; pos<childCount; pos++){
             ChildInfo cur = children[pos];
             // break if over search

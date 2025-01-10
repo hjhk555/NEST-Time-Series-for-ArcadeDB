@@ -1,13 +1,9 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import nju.hjh.arcadedb.timeseries.DataType;
-import nju.hjh.arcadedb.timeseries.UpdateStrategy;
 import nju.hjh.arcadedb.timeseries.btrdb.BtrdbEngine;
 import nju.hjh.arcadedb.timeseries.btrdb.DoubleStatistics;
-import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
-import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
 import nju.hjh.utils.exception.ExceptionSerializer;
 import nju.hjh.utils.log.Logger;
 

@@ -7,9 +7,8 @@ import com.arcadedb.database.RID;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 
-import javax.xml.crypto.Data;
-import java.util.ArrayList;
 import java.util.TreeMap;
 
 public class NestNodeLeaf extends NestNode {
@@ -47,7 +46,7 @@ public class NestNodeLeaf extends NestNode {
             dataPoint.serialize(binary);
 
         if (binary.size() > binSize)
-            throw new TimeseriesException("stat header size exceeded");
+            throw new TimeseriesException("leaf node size exceeded");
 
         binary.size(binSize);
         mutableDocument.set(PROP_NODE_BINARY, binary.toByteArray());
@@ -73,7 +72,7 @@ public class NestNodeLeaf extends NestNode {
     }
 
     public void insertFixed(DataPoint data, UpdateStrategy strategy, InsertionCallback insertionCallback, UpdateCallback updateCallback, SplitCallback splitCallback) throws TimeseriesException {
-        int maxdataSize = MAX_DATA_BLOCK_SIZE / DataPoint.maxBytesRequired(dataType);
+        int maxdataSize = MAX_DATA_BLOCK_SIZE / dataType.maxDataPointBytes();
 
         DataPoint oldDP;
         if ((oldDP = datapoints.get(data.timestamp)) != null){
@@ -81,7 +80,7 @@ public class NestNodeLeaf extends NestNode {
             DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
             if (newDP == null)
                 return; // no need to update
-            newDP = dataType.checkAndConvertDataPoint(newDP);
+            dataType.checkDataPointValid(newDP);
             if (oldDP.getValue().equals(newDP.getValue()))
                 return; // no need to update
             datapoints.put(data.timestamp, newDP);
@@ -110,7 +109,7 @@ public class NestNodeLeaf extends NestNode {
             }
             long splitTime = newDatapoints.firstKey();
             MutableDocument newDoc = document.getDatabase().newDocument(documentType);
-            NestNodeLeaf newLeaf = new NestNodeLeaf(newDoc, documentType, degree, dataType, splitTime, endTimestamp, Statistics.newEmptyStats(dataType));
+            NestNodeLeaf newLeaf = new NestNodeLeaf(newDoc, documentType, degree, dataType, splitTime, endTimestamp, dataType.newEmptyStatistics());
             newLeaf.dirty = true;
             newLeaf.datapoints = newDatapoints;
             newLeaf.statistics.insertAll(newLeaf.datapoints);
@@ -139,7 +138,7 @@ public class NestNodeLeaf extends NestNode {
             DataPoint newDP = oldDP.getUpdatedDataPoint(data, strategy);
             if (newDP == null)
                 return; // no need to update
-            newDP = dataType.checkAndConvertDataPoint(newDP);
+            dataType.checkDataPointValid(newDP);
             if (oldDP.getValue().equals(newDP.getValue()))
                 return; // no need to update
             datapoints.put(newDP.timestamp, newDP);
@@ -156,7 +155,7 @@ public class NestNodeLeaf extends NestNode {
             if (insertionCallback != null) insertionCallback.call(data);
         }
 
-        // check if require split, to achieve split, each data point should use at most MAX_DATA_BLOCK_SIZE/2 bytes
+        // check split requirement, to achieve split, each data point should use at most MAX_DATA_BLOCK_SIZE/2 bytes
         if (dataBytesUsed > MAX_DATA_BLOCK_SIZE){
             // locate split size
             int splitedBytes, targetBytes = Math.min(MAX_DATA_BLOCK_SIZE, dataBytesUsed*(!succRID.isValid() ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100);
@@ -179,12 +178,11 @@ public class NestNodeLeaf extends NestNode {
 
             // create latter leaf node
             MutableDocument newDoc = document.getDatabase().newDocument(documentType);
-            NestNodeLeaf newLeaf = new NestNodeLeaf(newDoc, documentType, degree, dataType, splitTime, endTimestamp, Statistics.newEmptyStats(dataType));
+            NestNodeLeaf newLeaf = new NestNodeLeaf(newDoc, documentType, degree, dataType, splitTime, endTimestamp, dataType.newEmptyStatistics());
             newLeaf.dirty = true;
             newLeaf.datapoints = newDatapoints;
             newLeaf.statistics.insertAll(newLeaf.datapoints);
             newLeaf.dataBytesUsed = this.dataBytesUsed - splitedBytes;
-            newLeaf.serializeIfDirty();
 
             // update this leaf
             endTimestamp = splitTime-1;
@@ -196,6 +194,7 @@ public class NestNodeLeaf extends NestNode {
 
             // link leaves
             newLeaf.succRID = this.succRID;
+            newLeaf.serializeIfDirty();
             this.succRID = newLeaf.document.getIdentity();
 
             if (splitCallback != null) splitCallback.call(newLeaf);
@@ -209,7 +208,7 @@ public class NestNodeLeaf extends NestNode {
         if (statistics != null && startTime <= statistics.firstTime && endTime >= statistics.lastTime)
             return statistics;
 
-        Statistics result = Statistics.newEmptyStats(dataType);
+        Statistics result = dataType.newEmptyStatistics();
         result.insertAll(datapoints.subMap(startTime, true, endTime, true));
         return result;
     }

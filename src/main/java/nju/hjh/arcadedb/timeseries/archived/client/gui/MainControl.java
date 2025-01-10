@@ -7,7 +7,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import nju.hjh.arcadedb.timeseries.client.ClientUtils;
-import nju.hjh.arcadedb.timeseries.server.ServerUtils;
 import nju.hjh.utils.exception.ExceptionSerializer;
 
 public class MainControl {

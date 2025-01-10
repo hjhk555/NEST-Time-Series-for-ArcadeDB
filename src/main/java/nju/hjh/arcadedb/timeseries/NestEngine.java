@@ -7,11 +7,13 @@ import com.arcadedb.graph.MutableVertex;
 import com.arcadedb.graph.Vertex;
 import com.arcadedb.schema.DocumentType;
 import com.arcadedb.schema.Type;
+import lombok.Getter;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.DuplicateTimestampException;
 import nju.hjh.arcadedb.timeseries.exception.TargetNotFoundException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 
 import java.util.*;
 
@@ -20,27 +22,12 @@ public class NestEngine {
     public static final String PREFIX_NODE_TYPE = "_n";
     public static final int STATS_NODE_BUCKETS = 1;
 
-    public final Database database;
-    public final HashMap<RID, NestNodeRoot> rootCache = new HashMap<>();
-
-    // created instances of TimeseriesEngine
-    public static final HashMap<Database, NestEngine> engineInstances = new HashMap<>();
+    @Getter
+    private final Database database;
+    private final HashMap<RID, NestNodeRoot> rootCache = new HashMap<>();
 
     public NestEngine(Database database) {
         this.database = database;
-    }
-
-    public static NestEngine getInstance(Database database){
-        synchronized (engineInstances) {
-            NestEngine engine = engineInstances.get(database);
-            if (engine != null) {
-                // check if engine has same database
-                if (engine.database == database) return engine;
-            }
-            engine = new NestEngine(database);
-            engineInstances.put(database, engine);
-            return engine;
-        }
     }
 
     public Set<String> getAllMetrics(Vertex object){
@@ -52,7 +39,7 @@ public class NestEngine {
         return res;
     }
 
-    public NestNodeRoot getStatsTreeRoot(Vertex object, String metric) throws TimeseriesException {
+    private NestNodeRoot getStatsTreeRoot(Vertex object, String metric) throws TimeseriesException {
         final String metricRIDField = PREFIX_METRIC + metric;
         final String metricDocumentType = PREFIX_NODE_TYPE+object.getIdentity().getBucketId()+"_"+metric;
 
@@ -76,7 +63,11 @@ public class NestEngine {
         return root;
     }
 
-    public NestNodeRoot getOrNewStatsTreeRoot(MutableVertex object, String metric, DataType dataType, int statsTreeDegree) throws TimeseriesException {
+    public void createIfAbsentStatsTree(MutableVertex object, String metric, DataType type) throws TimeseriesException {
+        createIfAbsentStatsTree(object, metric, type, NestNode.DEFAULT_TREE_DEGREE);
+    }
+
+    public void createIfAbsentStatsTree(MutableVertex object, String metric, DataType type, int degree) throws TimeseriesException {
         final String metricRIDField = PREFIX_METRIC + metric;
         final String metricDocumentType = PREFIX_NODE_TYPE + object.getIdentity().getBucketId()+"_"+metric;
 
@@ -86,50 +77,36 @@ public class NestEngine {
             statsNodeType.createProperty(NestNode.PROP_NODE_BINARY, Type.BINARY);
         }
 
-        // get root of statsTree
-        NestNodeRoot treeRoot;
-
         byte[] metricRidBytes = object.getBinary(metricRIDField);
-        if (metricRidBytes == null){
-            // no existing statsBlockRoot, create one
-            treeRoot = NestNode.newNest(database, metricDocumentType, dataType, statsTreeDegree);
-            Binary metricRID = new Binary(12);
-            metricRID.putInt(treeRoot.document.getIdentity().getBucketId());
-            metricRID.putLong(treeRoot.document.getIdentity().getPosition());
-            object.set(metricRIDField, metricRID.toByteArray());
-            object.save();
-            rootCache.put(treeRoot.document.getIdentity(), treeRoot);
-        }else{
-            Binary metricRID = new Binary(metricRidBytes);
-            RID rid = new RID(database, metricRID.getInt(), metricRID.getLong());
+        if (metricRidBytes != null) return; // exists
 
-            treeRoot = rootCache.get(rid);
-            if (treeRoot != null) return treeRoot;
-
-            treeRoot = NestNode.loadRoot(rid, metricDocumentType);
-            rootCache.put(rid, treeRoot);
-            return treeRoot;
-        }
-
-        return treeRoot;
+        // no existing statsBlockRoot, create one
+        NestNodeRoot treeRoot = NestNode.newNest(database, metricDocumentType, type, degree);
+        Binary metricRID = new Binary(12);
+        metricRID.putInt(treeRoot.document.getIdentity().getBucketId());
+        metricRID.putLong(treeRoot.document.getIdentity().getPosition());
+        object.set(metricRIDField, metricRID.toByteArray());
+        object.save();
+        rootCache.put(treeRoot.document.getIdentity(), treeRoot);
     }
 
     /**
      *
      * @param object object to insert data point
      * @param metric name of metric
-     * @param dataType type of data
-     * @param dataPoint data point to insert
+     * @param timestamp timestamp of datapoint
+     * @param value value of datapoint
      * @param strategy update strategy if data point exist at target timestamp
      * @throws DuplicateTimestampException if <code>strategy</code> is ERROR and data point already exist at target timestamp
      */
-    public void insertDataPoint(MutableVertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy) throws TimeseriesException {
-        insertDataPoint(object, metric, dataType, dataPoint, strategy, NestNode.DEFAULT_TREE_DEGREE);
+    public void insertDataPoint(MutableVertex object, String metric, long timestamp, Object value, UpdateStrategy strategy) throws TimeseriesException {
+        insertDataPoint(object, metric, timestamp, value, strategy, NestNode.DEFAULT_TREE_DEGREE);
     }
 
-    public void insertDataPoint(MutableVertex object, String metric, DataType dataType, DataPoint dataPoint, UpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
-        NestNodeRoot root = getOrNewStatsTreeRoot(object, metric, dataType, statsTreeDegree);
-        dataPoint = root.dataType.checkAndConvertDataPoint(dataPoint);
+    public void insertDataPoint(MutableVertex object, String metric, long timestamp, Object value, UpdateStrategy strategy, int statsTreeDegree) throws TimeseriesException {
+        createIfAbsentStatsTree(object, metric, DataType.inferDatatype(value), statsTreeDegree);
+        NestNodeRoot root = getStatsTreeRoot(object, metric);
+        DataPoint dataPoint = root.dataType.convertValue2DataPoint(timestamp, value);
         root.insert(dataPoint, strategy);
     }
 

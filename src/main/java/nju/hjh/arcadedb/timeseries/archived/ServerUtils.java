@@ -1,4 +1,4 @@
-package nju.hjh.arcadedb.timeseries.server;
+package nju.hjh.arcadedb.timeseries.archived;
 
 public class ServerUtils {
     public static final int DEFAULT_SERVER_PORT = 8809;

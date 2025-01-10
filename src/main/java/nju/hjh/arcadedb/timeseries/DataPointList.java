@@ -1,6 +1,5 @@
 package nju.hjh.arcadedb.timeseries;
 
-import com.arcadedb.database.RID;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 

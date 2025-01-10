@@ -1,6 +1,7 @@
-package nju.hjh.arcadedb.timeseries.server;
+package nju.hjh.arcadedb.timeseries.archived;
 
 import com.arcadedb.database.Database;
+import nju.hjh.arcadedb.timeseries.server.utils.DatabaseUtils;
 import nju.hjh.utils.log.Logger;
 
 import java.io.IOException;
@@ -13,7 +14,7 @@ public class ArcadeTSDBServer {
         logger.logSilent("ArcadeTSDB server log");
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            for (Database database : ArcadedbUtils.databaseInstances.values()){
+            for (Database database : DatabaseUtils.databaseInstances.values()){
                 database.close();
             }
             logger.logOnStdout("server shutdown.");

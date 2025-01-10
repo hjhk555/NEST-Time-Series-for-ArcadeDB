@@ -1,7 +1,5 @@
 package nju.hjh.arcadedb.timeseries;
 
-import java.util.List;
-
 public class MathUtils {
     public static int bytesToWriteUnsignedNumber(long number) {
         int bytes = 1;

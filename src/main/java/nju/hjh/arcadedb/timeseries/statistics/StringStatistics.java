@@ -5,6 +5,8 @@ import nju.hjh.arcadedb.timeseries.MathUtils;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.types.DataType;
+import nju.hjh.arcadedb.timeseries.types.StringDataType;
 
 import java.util.List;
 import java.util.NavigableMap;
@@ -105,10 +107,9 @@ public class StringStatistics extends FixedStatistics{
     /**
      * return bytes needed to write StringStatistics
      * long(8B) * 3 + String(length) * 2
-     * @param length max length of string
      */
-    public static int maxBytesRequired(int length){
-        int bytesToWriteString = MathUtils.bytesToWriteUnsignedNumber(length) + length;
+    public static int maxBytesRequired(int maxLength){
+        int bytesToWriteString = MathUtils.bytesToWriteUnsignedNumber(maxLength) + maxLength;
         return 24 + 2 * bytesToWriteString;
     }
 

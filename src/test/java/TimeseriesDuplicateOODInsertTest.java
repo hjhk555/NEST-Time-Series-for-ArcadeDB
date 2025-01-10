@@ -1,6 +1,7 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 import nju.hjh.utils.exception.ExceptionSerializer;
 import nju.hjh.utils.log.Logger;
 import nju.hjh.arcadedb.timeseries.*;
@@ -54,7 +55,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", i, i, UpdateStrategy.ERROR);
             }
             tsEngine.commit();
 
@@ -73,7 +74,7 @@ public class TimeseriesDuplicateOODInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.IGNORE);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", i, i, UpdateStrategy.IGNORE);
             }
 
             tsEngine.commit();

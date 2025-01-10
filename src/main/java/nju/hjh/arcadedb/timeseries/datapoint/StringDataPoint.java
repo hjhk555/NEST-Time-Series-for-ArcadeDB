@@ -11,6 +11,8 @@ public class StringDataPoint extends DataPoint{
     public static int MAX_LENGTH = NestNode.MAX_DATA_BLOCK_SIZE/2 - MathUtils.bytesToWriteUnsignedNumber(NestNode.MAX_DATA_BLOCK_SIZE/2);
     public String value;
 
+    public StringDataPoint(){}
+
     public StringDataPoint(long timestamp, String value){
         this.timestamp = timestamp;
         this.value = value;
@@ -20,6 +22,12 @@ public class StringDataPoint extends DataPoint{
     public void serialize(Binary binary) {
         binary.putLong(timestamp);
         binary.putString(value);
+    }
+
+    @Override
+    public void deserialize(Binary binary) {
+        timestamp = binary.getLong();
+        value = binary.getString();
     }
 
     @Override
@@ -44,6 +52,10 @@ public class StringDataPoint extends DataPoint{
         }else{
             throw new TimeseriesException("StringDataPoint can only be updated by StringDataPoint");
         }
+    }
+
+    public static int maxBytesRequired(int maxLength){
+        return 8 + MathUtils.bytesToWriteUnsignedNumber(maxLength) + maxLength;
     }
 
     @Override

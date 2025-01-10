@@ -6,15 +6,16 @@ import com.arcadedb.database.MutableDocument;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 
 public class NestNodeRoot extends NestNodeInternal {
     public static final byte BLOCK_TYPE = 0;
 
     /**
-     * size of stat header without statistics and child list:
-     * block type(1B) + degree(4B) + data type(5B) + latestRID(12B) + latestStartTime(8B) + child size(4B)
+     * size of stat header without type and child list:
+     * block type(1B) + degree(4B) + latestRID(12B) + latestStartTime(8B) + child size(4B)
      */
-    public static final int HEADER_WITHOUT_STATS_AND_CHILD = 34;
+    public static final int HEADER_WITHOUT_TYPE_AND_CHILD = 29;
 
     public ChildInfo latest;
 
@@ -32,7 +33,7 @@ public class NestNodeRoot extends NestNodeInternal {
         if (!dirty) return;
         for(int i=0; i<childCount; i++) if (children[i].node != null) children[i].node.serializeIfDirty();
 
-        int infoSize = HEADER_WITHOUT_STATS_AND_CHILD + degree * (CHILD_SIZE_WITHOUT_STATISTICS + Statistics.maxBytesRequired(dataType));
+        int infoSize = HEADER_WITHOUT_TYPE_AND_CHILD + dataType.byteUsed() + degree * (CHILD_SIZE_WITHOUT_STATISTICS + dataType.maxStatisticsBytes());
 
         MutableDocument modifiedDocument = document.modify();
         Binary binary = new Binary(infoSize, false);
@@ -61,7 +62,7 @@ public class NestNodeRoot extends NestNodeInternal {
     private final SplitCallback rootSplitCallback = newNode -> {
         // root split, clone root to internal
         MutableDocument newDoc = document.getDatabase().newDocument(documentType);
-        NestNodeInternal newInternal = new NestNodeInternal(newDoc, documentType, degree, dataType, beginTimestamp, endTimestamp, Statistics.newEmptyStats(dataType));
+        NestNodeInternal newInternal = new NestNodeInternal(newDoc, documentType, degree, dataType, beginTimestamp, endTimestamp, dataType.newEmptyStatistics());
         newInternal.dirty = true;
 
         for (int i = 0; i < childCount; i++) {
@@ -95,7 +96,7 @@ public class NestNodeRoot extends NestNodeInternal {
             NestNodeLeaf oldLeaf = (NestNodeLeaf) latest.node;
             // insert older node into tree
             if (oldLeaf.statistics == null){
-                oldLeaf.statistics = Statistics.newEmptyStats(dataType);
+                oldLeaf.statistics = dataType.newEmptyStatistics();
                 oldLeaf.statistics.insertAll(oldLeaf.datapoints);
             }
             insertLeafToTree(oldLeaf, null, null, rootSplitCallback);
@@ -108,7 +109,7 @@ public class NestNodeRoot extends NestNodeInternal {
 
     @Override
     public Statistics aggregativeQuery(long startTime, long endTime) throws TimeseriesException {
-        Statistics result = Statistics.newEmptyStats(dataType);
+        Statistics result = dataType.newEmptyStatistics();
         if (startTime < latest.beginTime) result.merge(super.aggregativeQuery(startTime, endTime));
         // search in latest
         if (endTime >= latest.beginTime){

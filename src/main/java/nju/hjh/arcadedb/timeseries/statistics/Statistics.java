@@ -1,7 +1,7 @@
 package nju.hjh.arcadedb.timeseries.statistics;
 
 import com.arcadedb.database.Binary;
-import nju.hjh.arcadedb.timeseries.DataType;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 
@@ -19,30 +19,11 @@ public abstract class Statistics {
     }
 
     public static Statistics getStatisticsFromBinary(DataType type, Binary binary) throws TimeseriesException {
-        Statistics stats = newEmptyStats(type);
+        Statistics stats = type.newEmptyStatistics();
         stats.deserialize(binary);
         return stats;
     }
 
-    public static Statistics newEmptyStats(DataType type) throws TimeseriesException {
-        if (!type.isFixed()) return new UnfixedStatistics();
-        return switch (type.baseType){
-            case LONG -> new LongStatistics();
-            case STRING -> new StringStatistics();
-            case DOUBLE -> new DoubleStatistics();
-            default -> throw new TimeseriesException("invalid data type");
-        };
-    }
-
-    public static int maxBytesRequired(DataType type) throws TimeseriesException {
-        if (!type.isFixed()) return UnfixedStatistics.maxBytesRequired();
-        return switch (type.baseType){
-            case LONG -> LongStatistics.maxBytesRequired();
-            case STRING -> StringStatistics.maxBytesRequired(type.param);
-            case DOUBLE -> DoubleStatistics.maxBytesRequired();
-            default -> throw new TimeseriesException("invalid data type");
-        };
-    }
     public void clear(){
         count = 0;
         firstTime = Long.MAX_VALUE;

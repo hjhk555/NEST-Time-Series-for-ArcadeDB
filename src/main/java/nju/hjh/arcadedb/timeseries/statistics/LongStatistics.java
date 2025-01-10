@@ -4,6 +4,7 @@ import com.arcadedb.database.Binary;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 
 import java.util.List;
 import java.util.NavigableMap;

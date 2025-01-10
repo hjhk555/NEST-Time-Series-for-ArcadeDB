@@ -1,6 +1,8 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
+import nju.hjh.arcadedb.timeseries.types.DataType;
+import nju.hjh.arcadedb.timeseries.types.StringDataType;
 import nju.hjh.utils.exception.ExceptionSerializer;
 import nju.hjh.utils.log.Logger;
 import nju.hjh.arcadedb.timeseries.*;
@@ -43,27 +45,28 @@ public class TimeseriesStringTest {
             database.getSchema().createVertexType("test");
         }
         Vertex testVertex = database.newVertex("test").save();
+
         database.commit();
 
         logger.logOnStdout("created vertex rid is "+testVertex.getIdentity());
         NestEngine tsEngine = new NestEngine(database);
 
+        final int testSize = 10000000;
+        final int commitSize = 1000000;
+        final String charUsed = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        final int strLen = 10;
+
+        Random ran = new Random();
+        ArrayList<String> strList = new ArrayList<>();
+        for (int i=0; i<testSize; i++){
+            strList.add(generateString(ran, charUsed, strLen));
+        }
+
         tsEngine.begin();
         try {
             long startTime = System.currentTimeMillis();
 
-            final int testSize = 10000000;
-            final int commitSize = 1000000;
-            final String charUsed = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            final int strLen = 10;
-
-            ArrayList<String> strList = new ArrayList<>();
-
-            Random ran = new Random();
-
-            for (int i=0; i<testSize; i++){
-                strList.add(generateString(ran, charUsed, strLen));
-            }
+            tsEngine.createIfAbsentStatsTree(testVertex.modify(), "status", new StringDataType(strLen));
 
             long periodStartTime = System.currentTimeMillis();
 
@@ -77,7 +80,7 @@ public class TimeseriesStringTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", new DataType(DataType.BaseType.STRING, strLen), new StringDataPoint(i, strList.get(i)), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", i, strList.get(i), UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();

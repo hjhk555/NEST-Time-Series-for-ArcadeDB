@@ -1,15 +1,13 @@
 import com.arcadedb.database.Database;
 import com.arcadedb.database.DatabaseFactory;
 import com.arcadedb.graph.Vertex;
-import nju.hjh.arcadedb.timeseries.datapoint.DoubleDataPoint;
-import nju.hjh.arcadedb.timeseries.statistics.DoubleStatistics;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 import nju.hjh.utils.exception.ExceptionSerializer;
 import nju.hjh.utils.log.Logger;
 import nju.hjh.arcadedb.timeseries.*;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.LongStatistics;
-import org.assertj.core.internal.Longs;
 
 import java.util.Random;
 
@@ -56,7 +54,7 @@ public class TimeseriesInsertTest {
 
                     tsEngine.begin();
                 }
-                tsEngine.insertDataPoint(testVertex.modify(), "status", DataType.LONG, new LongDataPoint(i, i), UpdateStrategy.ERROR);
+                tsEngine.insertDataPoint(testVertex.modify(), "status", i, i, UpdateStrategy.ERROR);
             }
 
             tsEngine.commit();

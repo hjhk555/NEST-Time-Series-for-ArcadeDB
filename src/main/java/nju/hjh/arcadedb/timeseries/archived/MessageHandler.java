@@ -1,4 +1,4 @@
-package nju.hjh.arcadedb.timeseries.server;
+package nju.hjh.arcadedb.timeseries.archived;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -17,6 +17,7 @@ import nju.hjh.arcadedb.timeseries.datapoint.DoubleDataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.LongDataPoint;
 import nju.hjh.arcadedb.timeseries.datapoint.StringDataPoint;
 import nju.hjh.arcadedb.timeseries.exception.*;
+import nju.hjh.arcadedb.timeseries.server.utils.DatabaseUtils;
 import nju.hjh.arcadedb.timeseries.statistics.DoubleStatistics;
 import nju.hjh.arcadedb.timeseries.statistics.FixedStatistics;
 import nju.hjh.arcadedb.timeseries.statistics.NumericStatistics;
@@ -72,7 +73,7 @@ public class MessageHandler {
                     if (inserts == null)
                         throw new MissingFieldException(ServerUtils.Key.IN_INSERT);
 
-                    Database database = ArcadedbUtils.getOrCreateDatabase(dbName);
+                    Database database = DatabaseUtils.getOrCreateDatabase(dbName);
                     return handleInsert(database, inserts, strategyMap);
                 }
                 case ServerUtils.Value.ACTION_TYPE_QUERY -> {
@@ -80,7 +81,7 @@ public class MessageHandler {
                     if (query == null)
                         throw new MissingFieldException(ServerUtils.Key.IN_QUERY);
 
-                    Database database = ArcadedbUtils.getDatabase(dbName);
+                    Database database = DatabaseUtils.getDatabase(dbName);
                     return handleQuery(database, query);
                 }
                 default -> throw new MessageParsingException("invalid action type '" + action + "'");
@@ -132,10 +133,10 @@ public class MessageHandler {
 
         switch (manageType) {
             case ServerUtils.Value.MANAGE_TYPE_CREATE -> {
-                ArcadedbUtils.createDatabase(dbName);
+                DatabaseUtils.createDatabase(dbName);
             }
             case ServerUtils.Value.MANAGE_TYPE_DROP -> {
-                ArcadedbUtils.dropDatabase(dbName);
+                DatabaseUtils.dropDatabase(dbName);
             }
             case ServerUtils.Value.MANAGE_TYPE_EXIST -> {
                 DatabaseFactory dbf = new DatabaseFactory(ServerUtils.DATABASE_DIR + dbName);
@@ -177,8 +178,8 @@ public class MessageHandler {
                     if (tagObject != null) {
                         for (Map.Entry<String, Object> tag : tagObject.entrySet()) {
                             String tagKey = tag.getKey();
-                            if (tagKey.equals(ArcadedbUtils.PROP_OBJECT_ID))
-                                throw new MessageParsingException("cannot use '"+ArcadedbUtils.PROP_OBJECT_ID+"' as tag key");
+                            if (tagKey.equals(DatabaseUtils.PROP_OBJECT_ID))
+                                throw new MessageParsingException("cannot use '"+ DatabaseUtils.PROP_OBJECT_ID+"' as tag key");
 
                             if (tagKey.startsWith(NestEngine.PREFIX_METRIC))
                                 throw new MessageParsingException("cannot use '"+ NestEngine.PREFIX_METRIC+"' as tag prefix");
@@ -192,7 +193,7 @@ public class MessageHandler {
                     }
 
                     // get object
-                    MutableVertex object = ArcadedbUtils.getOrCreateSingleVertex(database, objectType, objectId, tags).modify();
+                    MutableVertex object = DatabaseUtils.getOrCreateSingleVertex(database, objectType, objectId, tags).modify();
                     Boolean tagOverwrite = insert.getBoolean(ServerUtils.Key.INSERT_TAG_OVERWRITE);
                     if (tagOverwrite!=null && tagOverwrite){
                         for (Map.Entry<String, String> tag : tags.entrySet()){
@@ -291,7 +292,7 @@ public class MessageHandler {
                         strategy = UpdateStrategy.IGNORE;
                     tsEngine.insertDataPoint(object, metricName, dataType, dataPoint, strategy);
                 }catch (TimeseriesException e){
-                    throw new TimeseriesException(String.format("%s:%s.%s[%d]: %s", object.getTypeName(), object.getString(ArcadedbUtils.PROP_OBJECT_ID), metricName, timestamp, e.getMessage()));
+                    throw new TimeseriesException(String.format("%s:%s.%s[%d]: %s", object.getTypeName(), object.getString(DatabaseUtils.PROP_OBJECT_ID), metricName, timestamp, e.getMessage()));
                 }
             }
         }
@@ -339,7 +340,7 @@ public class MessageHandler {
                         strategy = UpdateStrategy.IGNORE;
                     tsEngine.insertDataPoint(object, metricName, dataType, dataPoint, strategy);
                 } catch (TimeseriesException e) {
-                    throw new TimeseriesException(String.format("%s:%s.%s[%d]: %s", object.getTypeName(), object.getString(ArcadedbUtils.PROP_OBJECT_ID), metricName, timestamp, e.getMessage()));
+                    throw new TimeseriesException(String.format("%s:%s.%s[%d]: %s", object.getTypeName(), object.getString(DatabaseUtils.PROP_OBJECT_ID), metricName, timestamp, e.getMessage()));
                 }
             }
         }
@@ -398,7 +399,7 @@ public class MessageHandler {
                         strategy = UpdateStrategy.IGNORE;
                     tsEngine.insertDataPoint(object, metricName, dataType, dataPoint, strategy);
                 } catch (TimeseriesException e) {
-                    throw new TimeseriesException(String.format("%s:%s.%s[%d]: %s", object.getTypeName(), object.getString(ArcadedbUtils.PROP_OBJECT_ID), metricName, timestamp, e.getMessage()));
+                    throw new TimeseriesException(String.format("%s:%s.%s[%d]: %s", object.getTypeName(), object.getString(DatabaseUtils.PROP_OBJECT_ID), metricName, timestamp, e.getMessage()));
                 }
             }
         }
@@ -437,7 +438,7 @@ public class MessageHandler {
             if (objectId.length() == 0)
                 throw new MessageParsingException("empty id");
 
-            objects.add(ArcadedbUtils.getSingleVertex(database, objectType, objectId));
+            objects.add(DatabaseUtils.getSingleVertex(database, objectType, objectId));
         }else if (objectIdentifier.substring(0, ServerUtils.Value.QUERY_OBJECT_PREFIX_SQL.length()).equalsIgnoreCase(ServerUtils.Value.QUERY_OBJECT_PREFIX_SQL)){
             String sql = objectIdentifier.substring(ServerUtils.Value.QUERY_OBJECT_PREFIX_SQL.length(), objectIdentifier.length()-1);
             ResultSet results = database.query("SQL", sql);
@@ -500,14 +501,14 @@ public class MessageHandler {
         if (queryType.equals(ServerUtils.Value.QUERY_TYPE_INFO)) {
             int nullCount = 0;
             for (Vertex object : objects) {
-                String objectId = object.getString(ArcadedbUtils.PROP_OBJECT_ID);
+                String objectId = object.getString(DatabaseUtils.PROP_OBJECT_ID);
                 if (objectId == null) objectId = String.format("null#%d", nullCount++);
                 String objectKey = object.getTypeName()+":"+objectId;
 
                 JSONObject objectInfo = new JSONObject();
                 JSONObject tags = new JSONObject();
                 for (Map.Entry<String, Object> prop : object.toMap(false).entrySet()){
-                    if (!prop.getKey().equals(ArcadedbUtils.PROP_OBJECT_ID) && !prop.getKey().startsWith(NestEngine.PREFIX_METRIC))
+                    if (!prop.getKey().equals(DatabaseUtils.PROP_OBJECT_ID) && !prop.getKey().startsWith(NestEngine.PREFIX_METRIC))
                         tags.put(prop.getKey(), prop.getValue());
                 }
                 objectInfo.put(ServerUtils.Key.OUT_TAG, tags);
@@ -556,7 +557,7 @@ public class MessageHandler {
 
                 int nullCount = 0;
                 for (Vertex object : objects) {
-                    String objectId = object.getString(ArcadedbUtils.PROP_OBJECT_ID);
+                    String objectId = object.getString(DatabaseUtils.PROP_OBJECT_ID);
                     if (objectId == null) objectId = String.format("null#%d", nullCount++);
                     String objectKey = String.format("%s:%s.%s[%d~%d]", object.getTypeName(), objectId, metric, beginTime, endTime);
 
@@ -579,7 +580,7 @@ public class MessageHandler {
                 // aggressive
                 int nullCount = 0;
                 for (Vertex object : objects) {
-                    String objectId = object.getString(ArcadedbUtils.PROP_OBJECT_ID);
+                    String objectId = object.getString(DatabaseUtils.PROP_OBJECT_ID);
                     if (objectId == null) objectId = String.format("null#%d", nullCount++);
                     String objectKey = String.format("%s:%s.%s(%s[%d~%d])", object.getTypeName(), objectId, queryType, metric, beginTime, endTime);
 
@@ -608,7 +609,7 @@ public class MessageHandler {
                                     } else {
                                         throw new TimeseriesException(objectKey+" contains first timestamp but data point not found");
                                     }
-                                }
+                                }``
                                 jsonResult.put(objectKey, jsonDataPoint);
                             }
                             case ServerUtils.Value.METRIC_QUERY_TYPE_LAST -> {
@@ -725,7 +726,7 @@ public class MessageHandler {
                         else
                             longSum += sum.longValue();
                     } else {
-                        throw new DataTypeMismatchException(String.format("%s:%s.%s is not numeric", object.getTypeName(), object.getString(ArcadedbUtils.PROP_OBJECT_ID), metric));
+                        throw new DataTypeMismatchException(String.format("%s:%s.%s is not numeric", object.getTypeName(), object.getString(DatabaseUtils.PROP_OBJECT_ID), metric));
                     }
                 }
                 if (containDouble)
@@ -743,7 +744,7 @@ public class MessageHandler {
                         doubleSum += numStats.getSum().doubleValue();
                         totalCount += numStats.count;
                     } else {
-                        throw new DataTypeMismatchException(String.format("%s:%s.%s is not numeric", object.getTypeName(), object.getString(ArcadedbUtils.PROP_OBJECT_ID), metric));
+                        throw new DataTypeMismatchException(String.format("%s:%s.%s is not numeric", object.getTypeName(), object.getString(DatabaseUtils.PROP_OBJECT_ID), metric));
                     }
                 }
                 jsonRet.put(ServerUtils.Key.OUT_RESULT, doubleSum / totalCount);

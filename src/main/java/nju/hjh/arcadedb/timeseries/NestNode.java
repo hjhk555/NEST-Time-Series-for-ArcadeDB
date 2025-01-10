@@ -4,6 +4,7 @@ import com.arcadedb.database.*;
 import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
+import nju.hjh.arcadedb.timeseries.types.DataType;
 
 import java.util.TreeMap;
 
@@ -76,9 +77,8 @@ public abstract class NestNode{
         Document document = database.lookupByRID(rid, true).asDocument();
         Binary binary = new Binary(document.getBinary(PROP_NODE_BINARY));
         switch (binary.getByte()) {
-            case NestNodeRoot.BLOCK_TYPE -> {
+            case NestNodeRoot.BLOCK_TYPE ->
                 throw new TimeseriesException("root node found when loading non-root node");
-            }
             case NestNodeInternal.BLOCK_TYPE -> {
                 NestNodeInternal internal = new NestNodeInternal(document, documentType, degree, dataType, beginTimestamp, endTimestamp, statistics);
                 internal.childCount = binary.getInt();
@@ -92,17 +92,15 @@ public abstract class NestNode{
                 int dataSize = binary.getInt();
                 leaf.datapoints = new TreeMap<>();
                 for(int i=0; i<dataSize; i++){
-                    DataPoint newPoint = DataPoint.getDataPointFromBinary(dataType, binary);
+                    DataPoint newPoint = dataType.newEmptyDataPoint();
+                    newPoint.deserialize(binary);
                     leaf.datapoints.put(newPoint.timestamp, newPoint);
+                    leaf.dataBytesUsed += newPoint.realBytesRequired();
                 }
                 return leaf;
             }
             default -> throw new TimeseriesException("node has invalid type");
         }
-    }
-
-    public static NestNodeRoot newNest(Database database, String documentType, DataType dataType) throws TimeseriesException {
-        return newNest(database, documentType, dataType, DEFAULT_TREE_DEGREE);
     }
 
     public static NestNodeRoot newNest(Database database, String documentType, DataType dataType, int degree) throws TimeseriesException {
@@ -128,25 +126,24 @@ public abstract class NestNode{
     }
 
     public interface InsertionCallback{
-        public void call(DataPoint newDP) throws TimeseriesException;
+        void call(DataPoint newDP) throws TimeseriesException;
     }
     public interface UpdateCallback{
-        public void call(DataPoint oldDP, DataPoint newDP) throws TimeseriesException;
+        void call(DataPoint oldDP, DataPoint newDP) throws TimeseriesException;
     }
     public interface ReachLeafCallback{
-        public void call() throws TimeseriesException;
+        void call() throws TimeseriesException;
     }
     public interface BatchInsertionCallback{
-        public void call(Statistics statistics) throws TimeseriesException;
+        void call(Statistics statistics) throws TimeseriesException;
     }
     public interface SplitCallback{
-        public void call(NestNode newNode) throws TimeseriesException;
+        void call(NestNode newNode) throws TimeseriesException;
     }
 
     /**
      * inesrt data point into statsBlock
      * @param data the data point to insert
-     * @throws TimeseriesException
      */
     public abstract void insert(DataPoint data, UpdateStrategy strategy, InsertionCallback insertionCallback, UpdateCallback updateCallback, SplitCallback splitCallback) throws TimeseriesException;
 

@@ -8,6 +8,8 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 public class DoubleDataPoint extends DataPoint{
     public double value;
 
+    public DoubleDataPoint() {}
+
     public DoubleDataPoint(long timestamp, double value) {
         this.timestamp = timestamp;
         this.value = value;
@@ -17,6 +19,12 @@ public class DoubleDataPoint extends DataPoint{
     public void serialize(Binary binary) {
         binary.putLong(timestamp);
         binary.putLong(Double.doubleToLongBits(value));
+    }
+
+    @Override
+    public void deserialize(Binary binary) {
+        timestamp = binary.getLong();
+        value = Double.longBitsToDouble(binary.getLong());
     }
 
     @Override
@@ -41,6 +49,10 @@ public class DoubleDataPoint extends DataPoint{
         }else{
             throw new TimeseriesException("DoubleDataPoint can only be updated by DoubleDataPoint");
         }
+    }
+
+    public static int maxBytesRequired(){
+        return 16;
     }
 
     @Override
