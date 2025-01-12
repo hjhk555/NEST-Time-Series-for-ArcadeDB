@@ -6,7 +6,7 @@ import nju.hjh.arcadedb.timeseries.server.bo.Metric;
 import nju.hjh.arcadedb.timeseries.server.dto.MetricDto;
 import nju.hjh.arcadedb.timeseries.server.utils.DatabaseUtils;
 import nju.hjh.arcadedb.timeseries.server.utils.GsonUtils;
-import nju.hjh.arcadedb.timeseries.server.utils.MetricUtils;
+import nju.hjh.arcadedb.timeseries.server.utils.DtoUtils;
 import nju.hjh.arcadedb.timeseries.server.utils.ResponseUtils;
 import org.springframework.web.bind.annotation.*;
 import com.google.gson.reflect.TypeToken;
@@ -28,7 +28,7 @@ public class InsertionController {
             List<MetricDto> metricDtos = GsonUtils.fromJson(jsonMetricDtoList, typeMetricList);
             List<Metric> metrics = new ArrayList<>();
             for (MetricDto metricDto : metricDtos) {
-                if (MetricUtils.validateMetricDto(metricDto)) metrics.add(MetricUtils.convertDto2Bo(metricDto));
+                if (DtoUtils.validateMetricDto(metricDto)) metrics.add(DtoUtils.convertMetricDto2Bo(metricDto));
             }
             NestEngine engine = DatabaseUtils.getNestDatabase(dbName);
             engine.begin();

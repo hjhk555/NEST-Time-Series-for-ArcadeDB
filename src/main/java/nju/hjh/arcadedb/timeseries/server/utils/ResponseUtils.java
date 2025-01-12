@@ -7,7 +7,7 @@ public class ResponseUtils {
     public static Map<String, Object> getExceptionResponse(final Throwable e) {
         Map<String, Object> result = new HashMap<>();
         result.put("status", "error");
-        result.put("error", e.getClass());
+        result.put("error", e.getClass().getSimpleName());
         result.put("message", e.getMessage());
         return result;
     }
