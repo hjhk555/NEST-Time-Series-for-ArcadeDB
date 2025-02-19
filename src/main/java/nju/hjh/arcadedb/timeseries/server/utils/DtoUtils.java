@@ -40,6 +40,6 @@ public class DtoUtils {
     }
 
     public static boolean validateQueryDto(final QueryDto dto) throws TimeseriesException {
-        
+        return false;
     }
 }

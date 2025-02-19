@@ -1,6 +1,6 @@
 package nju.hjh.arcadedb.timeseries.server;
 
-import nju.hjh.arcadedb.timeseries.server.utils.DatabaseUtils;
+import nju.hjh.arcadedb.timeseries.server.data.NestDatabaseManager;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -8,6 +8,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class ArcadeTimeseriesServerApplication {
     public static void main(String[] args) {
         SpringApplication.run(ArcadeTimeseriesServerApplication.class, args);
-        Runtime.getRuntime().addShutdownHook(new Thread(DatabaseUtils::closeAllDatabase));
+        Runtime.getRuntime().addShutdownHook(new Thread(NestDatabaseManager::closeAllDatabase));
     }
 }

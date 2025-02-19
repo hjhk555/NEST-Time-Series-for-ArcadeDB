@@ -89,7 +89,7 @@ public class NestNodeInternal extends NestNode {
         children[insertPos] = new ChildInfo(newChild.document.getIdentity(), newChild.beginTimestamp, newChild.statistics, newChild);
         childCount++;
 
-        // check split need, childCount = degree+1
+        // check split need
         if (childCount > degree){
             int splitCount = childCount*(endTimestamp == MAX_TIMESTAMP ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100;
             // create new node

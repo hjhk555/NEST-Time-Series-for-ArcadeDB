@@ -1,10 +1,9 @@
 package nju.hjh.arcadedb.timeseries.server.controller;
 
-import com.arcadedb.graph.MutableVertex;
-import nju.hjh.arcadedb.timeseries.NestEngine;
 import nju.hjh.arcadedb.timeseries.server.bo.Metric;
+import nju.hjh.arcadedb.timeseries.server.bo.TimeseriesInsertTask;
 import nju.hjh.arcadedb.timeseries.server.dto.MetricDto;
-import nju.hjh.arcadedb.timeseries.server.utils.DatabaseUtils;
+import nju.hjh.arcadedb.timeseries.server.data.NestDatabaseManager;
 import nju.hjh.arcadedb.timeseries.server.utils.GsonUtils;
 import nju.hjh.arcadedb.timeseries.server.utils.DtoUtils;
 import nju.hjh.arcadedb.timeseries.server.utils.ResponseUtils;
@@ -16,13 +15,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
-@RequestMapping("/insert")
-public class InsertionController {
+@RequestMapping("/timeseries")
+public class TimeseriesController {
     private static final Type typeMetricList = new TypeToken<List<MetricDto>>(){}.getType();
 
-    @PostMapping("/ts")
+    @PostMapping("/insert")
     public Map<String, Object> insertTimeseries(@RequestParam("database") String dbName, @RequestBody String jsonMetricDtoList) {
         try {
             List<MetricDto> metricDtos = GsonUtils.fromJson(jsonMetricDtoList, typeMetricList);
@@ -30,23 +30,13 @@ public class InsertionController {
             for (MetricDto metricDto : metricDtos) {
                 if (DtoUtils.validateMetricDto(metricDto)) metrics.add(DtoUtils.convertMetricDto2Bo(metricDto));
             }
-            NestEngine engine = DatabaseUtils.getNestDatabase(dbName);
-            engine.begin();
-            try{
-                for (Metric metric : metrics) {
-                    MutableVertex vtxObject = DatabaseUtils.getOrCreateSingleVertex(engine.getDatabase(), metric.getObjectType(), metric.getObjectId()).modify();
-                    for (Map.Entry<Long, Object> datapoint: metric.getDataPoints().entrySet()){
-                        engine.insertDataPoint(vtxObject, metric.getMetricName(), datapoint.getKey(), datapoint.getValue(), metric.getStrategy());
-                    }
-                }
-                engine.commit();
+            if (metrics.isEmpty()) {
                 Map<String, Object> result = new HashMap<>();
                 result.put("status", "ok");
                 return result;
-            } catch (Exception e){
-                engine.rollback();
-                throw e;
             }
+            CompletableFuture<Map<String, Object>> resultFuture = NestDatabaseManager.getDatabaseManager(dbName).submitTask(new TimeseriesInsertTask(metrics));
+            return resultFuture.get();
         } catch (Exception e){
             return ResponseUtils.getExceptionResponse(e);
         }
