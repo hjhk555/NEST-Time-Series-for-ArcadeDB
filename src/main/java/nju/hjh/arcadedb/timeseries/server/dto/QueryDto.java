@@ -30,5 +30,5 @@ public class QueryDto {
     private Long end;
 
     @SerializedName("fields")
-    private List<QueryFieldDto> queryFields;
+    private List<String> queryFields;
 }

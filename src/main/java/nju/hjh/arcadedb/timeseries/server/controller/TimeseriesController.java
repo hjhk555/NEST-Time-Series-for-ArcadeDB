@@ -4,6 +4,7 @@ import nju.hjh.arcadedb.timeseries.server.bo.Metric;
 import nju.hjh.arcadedb.timeseries.server.bo.TimeseriesInsertTask;
 import nju.hjh.arcadedb.timeseries.server.dto.MetricDto;
 import nju.hjh.arcadedb.timeseries.server.data.NestDatabaseManager;
+import nju.hjh.arcadedb.timeseries.server.dto.QueryDto;
 import nju.hjh.arcadedb.timeseries.server.utils.GsonUtils;
 import nju.hjh.arcadedb.timeseries.server.utils.DtoUtils;
 import nju.hjh.arcadedb.timeseries.server.utils.ResponseUtils;
@@ -21,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 @RequestMapping("/timeseries")
 public class TimeseriesController {
     private static final Type typeMetricList = new TypeToken<List<MetricDto>>(){}.getType();
+    private static final Type typeQueryList = new TypeToken<List<QueryDto>>(){}.getType();
 
     @PostMapping("/insert")
     public Map<String, Object> insertTimeseries(@RequestParam("database") String dbName, @RequestBody String jsonMetricDtoList) {
@@ -40,5 +42,10 @@ public class TimeseriesController {
         } catch (Exception e){
             return ResponseUtils.getExceptionResponse(e);
         }
+    }
+
+    @GetMapping("/query")
+    public Map<String, Object> queryTimeseries(@RequestParam("database") String dbName, @RequestParam("query") String jsonQueryDtoList) {
+        return new HashMap<>();
     }
 }
