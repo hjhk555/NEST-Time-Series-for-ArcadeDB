@@ -1,22 +1,28 @@
 package nju.hjh.arcadedb.timeseries.server.data;
 
 import com.arcadedb.database.Database;
+import com.arcadedb.database.RID;
 import com.arcadedb.graph.MutableVertex;
 import com.arcadedb.graph.Vertex;
 import com.arcadedb.index.IndexCursor;
+import com.arcadedb.query.sql.executor.ResultSet;
 import com.arcadedb.schema.Property;
 import com.arcadedb.schema.Schema;
 import com.arcadedb.schema.Type;
 import com.arcadedb.schema.VertexType;
 import nju.hjh.arcadedb.timeseries.NestEngine;
+import nju.hjh.arcadedb.timeseries.datapoint.DataPoint;
 import nju.hjh.arcadedb.timeseries.exception.TargetNotFoundException;
 import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.server.bo.Metric;
-import nju.hjh.arcadedb.timeseries.server.bo.TimeseriesInsertTask;
+import nju.hjh.arcadedb.timeseries.server.bo.TimeseriesQuery;
+import nju.hjh.arcadedb.timeseries.server.bo.TimeseriesQueryResult;
+import nju.hjh.arcadedb.timeseries.server.task.TimeseriesInsertTask;
+import nju.hjh.arcadedb.timeseries.server.task.TimeseriesQueryTask;
 import nju.hjh.arcadedb.timeseries.server.utils.ResponseUtils;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class NestDatabaseTaskHandler {
     public static final String PROP_OBJECT_ID = "oid";
@@ -82,6 +88,55 @@ public class NestDatabaseTaskHandler {
             result.put("status", "ok");
             return result;
         } catch (Exception e){
+            engine.rollback();
+            return ResponseUtils.getExceptionResponse(e);
+        }
+    }
+
+    public static Map<String, Object> handleTimeseriesQueryTask(NestEngine engine, TimeseriesQueryTask task){
+        engine.begin();
+        try {
+            Map<String, Object> result = new HashMap<>();
+            List<Object> batchQueryResults = new ArrayList<>();
+            for (TimeseriesQuery query: task.getQueries()){
+                List<Vertex> vertices = new ArrayList<>();
+                List<Object> singleQueryResult = new ArrayList<>();
+                try{
+                    if (query.getObjectId() != null){
+                        vertices.add(getSingleVertex(engine.getDatabase(), query.getObjectType(), query.getObjectId()));
+                    }else if (query.getRidBucket() != null){
+                        vertices.add(engine.getDatabase().lookupByRID(new RID(engine.getDatabase(), query.ridBucket, query.ridOffset), true).asVertex());
+                    }else{
+                        ResultSet queryRes = engine.getDatabase().query("SQL", query.getSql());
+                        while (queryRes.hasNext()){
+                            queryRes.next().getVertex().ifPresent(vertices::add);
+                        }
+                    }
+
+                    for (Vertex vertex: vertices){
+                        TimeseriesQueryResult vertexResult = new TimeseriesQueryResult();
+                        vertexResult.id = vertex.getType().getName()+":"+vertex.getString(PROP_OBJECT_ID);
+                        vertexResult.rid = vertex.getIdentity().getBucketId()+":"+vertex.getIdentity().getPosition();
+                        for (String metric: query.getQueryFields()){
+                            try{
+                                vertexResult.timeseries.put(metric, engine.periodQuery(vertex, metric, query.getStart(), query.getEnd(), query.getLimit()).getList().stream()
+                                        .collect(Collectors.toMap(data -> data.timestamp, DataPoint::getValue)));
+                            }catch (Exception e){
+                                vertexResult.timeseries.put(metric, ResponseUtils.getExceptionDetail(e));
+                            }
+                        }
+                        singleQueryResult.add(vertexResult);
+                    }
+                    batchQueryResults.add(singleQueryResult);
+                } catch (Exception e){
+                    batchQueryResults.add(ResponseUtils.getExceptionDetail(e));
+                }
+            }
+            engine.commit();
+            result.put("status", "ok");
+            result.put("result", batchQueryResults);
+            return result;
+        }catch (Exception e){
             engine.rollback();
             return ResponseUtils.getExceptionResponse(e);
         }
