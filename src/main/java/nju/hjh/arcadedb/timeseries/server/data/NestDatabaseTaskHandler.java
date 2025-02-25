@@ -94,6 +94,7 @@ public class NestDatabaseTaskHandler {
     }
 
     public static Map<String, Object> handleTimeseriesQueryTask(NestEngine engine, TimeseriesQueryTask task){
+
         engine.begin();
         try {
             Map<String, Object> result = new HashMap<>();
@@ -119,8 +120,10 @@ public class NestDatabaseTaskHandler {
                         vertexResult.rid = vertex.getIdentity().getBucketId()+":"+vertex.getIdentity().getPosition();
                         for (String metric: query.getQueryFields()){
                             try{
-                                vertexResult.timeseries.put(metric, engine.periodQuery(vertex, metric, query.getStart(), query.getEnd(), query.getLimit()).getList().stream()
-                                        .collect(Collectors.toMap(data -> data.timestamp, DataPoint::getValue)));
+                                List<DataPoint> points = engine.periodQuery(vertex, metric, query.getStart(), query.getEnd(), query.getLimit()).getList();
+                                Map<Long, Object> pointMap = new TreeMap<>();
+                                for (DataPoint point : points) pointMap.put(point.timestamp, point.getValue());
+                                vertexResult.timeseries.put(metric, pointMap);
                             }catch (Exception e){
                                 vertexResult.timeseries.put(metric, ResponseUtils.getExceptionDetail(e));
                             }
