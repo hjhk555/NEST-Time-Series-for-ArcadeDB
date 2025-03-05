@@ -9,8 +9,6 @@ import nju.hjh.arcadedb.timeseries.exception.TimeseriesException;
 import nju.hjh.arcadedb.timeseries.statistics.Statistics;
 import nju.hjh.arcadedb.timeseries.types.DataType;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.TreeMap;
 
 public class NestNodeLeaf extends NestNode {
@@ -102,15 +100,8 @@ public class NestNodeLeaf extends NestNode {
         if (datapoints.size() > maxdataSize){
             // split into 2 blocks
             int totalSize = datapoints.size();
-            int splitedSize;
-            if (!succRID.isValid()){
-                splitedSize = Math.max(totalSize-maxdataSize, maxdataSize * (100-LATEST_SPLIT_SPACE_RATIO) /100);
-            } else{
-                List<Long> timestamps = new ArrayList<>(datapoints.keySet());
-                double ratio = (double)(2*maxdataSize-totalSize) / (endTimestamp-beginTimestamp+1);
-                splitedSize = totalSize-maxdataSize;
-                while( splitedSize < maxdataSize && (maxdataSize-splitedSize) > ratio*(timestamps.get(splitedSize)-beginTimestamp)) splitedSize++;
-            }
+            int splitedSize = Math.min(maxdataSize, totalSize*(!succRID.isValid() ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100);
+
             TreeMap<Long, DataPoint> newDatapoints = new TreeMap<>();
             for(int i=0; i<totalSize-splitedSize; i++){
                 DataPoint transPoint = datapoints.pollLastEntry().getValue();
@@ -166,45 +157,24 @@ public class NestNodeLeaf extends NestNode {
 
         // check split requirement, to achieve split, each data point should use at most MAX_DATA_BLOCK_SIZE/2 bytes
         if (dataBytesUsed > MAX_DATA_BLOCK_SIZE){
+            // locate split size
+            int splitedBytes, targetBytes = Math.min(MAX_DATA_BLOCK_SIZE, dataBytesUsed*(!succRID.isValid() ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100);
+            // fill this block as much as possible
+            splitedBytes = dataBytesUsed;
             TreeMap<Long, DataPoint> newDatapoints = new TreeMap<>();
-            int splitedBytes;
-            long splitTime;
-            if (!succRID.isValid()) {
-                splitedBytes = dataBytesUsed;
-                int targetBytes = MAX_DATA_BLOCK_SIZE * (100-LATEST_SPLIT_SPACE_RATIO) / 100;
-                // fill new block as much as possible
-                while (splitedBytes > targetBytes) {
-                    DataPoint transPoint = datapoints.pollLastEntry().getValue();
-                    int transBytes = transPoint.realBytesRequired();
-                    // check if new leaf can hold this point
-                    if (dataBytesUsed - splitedBytes + transBytes > MAX_DATA_BLOCK_SIZE) {
-                        // send it back
-                        datapoints.put(transPoint.timestamp, transPoint);
-                        break;
-                    }
-                    newDatapoints.put(transPoint.timestamp, transPoint);
-                    splitedBytes -= transBytes;
+            while (splitedBytes > targetBytes){
+                DataPoint transPoint = datapoints.pollLastEntry().getValue();
+                int transBytes = transPoint.realBytesRequired();
+                // check if new leaf can hold this point
+                if (dataBytesUsed-splitedBytes+transBytes>MAX_DATA_BLOCK_SIZE){
+                    // send it back
+                    datapoints.put(transPoint.timestamp, transPoint);
+                    break;
                 }
-                splitTime = newDatapoints.firstKey();
-            } else{
-                double ratio = (double)(2*MAX_DATA_BLOCK_SIZE - dataBytesUsed) / (endTimestamp-beginTimestamp+1);
-                splitedBytes = dataBytesUsed;
-                splitTime = endTimestamp+1;
-                while (!datapoints.isEmpty()) {
-                    DataPoint transPoint = datapoints.pollLastEntry().getValue();
-                    int transBytes = transPoint.realBytesRequired();
-                    // check if this leaf ratio exceed limit
-                    if (splitedBytes <= MAX_DATA_BLOCK_SIZE &&
-                            (MAX_DATA_BLOCK_SIZE-splitedBytes+transBytes) > ratio*(transPoint.timestamp-beginTimestamp)) {
-                        // send it back
-                        datapoints.put(transPoint.timestamp, transPoint);
-                        break;
-                    }
-                    newDatapoints.put(transPoint.timestamp, transPoint);
-                    splitedBytes -= transBytes;
-                    splitTime = transPoint.timestamp;
-                }
+                newDatapoints.put(transPoint.timestamp, transPoint);
+                splitedBytes -= transBytes;
             }
+            long splitTime = newDatapoints.firstKey();
 
             // create latter leaf node
             MutableDocument newDoc = document.getDatabase().newDocument(documentType);

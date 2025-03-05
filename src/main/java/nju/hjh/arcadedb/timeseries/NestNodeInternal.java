@@ -91,14 +91,7 @@ public class NestNodeInternal extends NestNode {
 
         // check split need
         if (childCount > degree){
-            int splitCount;
-            if (endTimestamp == MAX_TIMESTAMP){
-                splitCount = Math.max(childCount-degree, degree * (100-LATEST_SPLIT_SPACE_RATIO) / 100);
-            }else{
-                double ratio = (double)(2*degree-childCount) / (endTimestamp-beginTimestamp+1);
-                splitCount = childCount-degree;
-                while( splitCount < degree && (degree-splitCount) > ratio*(children[splitCount].beginTime-beginTimestamp)) splitCount++;
-            }
+            int splitCount = childCount*(endTimestamp == MAX_TIMESTAMP ? LATEST_SPLIT_RATIO : OLD_SPLIT_RATIO)/100;
             // create new node
             MutableDocument newDoc = document.getDatabase().newDocument(documentType);
             NestNodeInternal newInternal = new NestNodeInternal(newDoc, documentType, degree, dataType, children[splitCount].beginTime, endTimestamp, dataType.newEmptyStatistics());
