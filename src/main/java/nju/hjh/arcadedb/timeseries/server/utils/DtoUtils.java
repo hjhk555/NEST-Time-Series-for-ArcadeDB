@@ -12,6 +12,7 @@ import nju.hjh.arcadedb.timeseries.server.dto.TimeseriesQueryDto;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class DtoUtils {
@@ -32,21 +33,15 @@ public class DtoUtils {
         metric.objectId = id.substring(sepIndex + 1);
         metric.metricName = dto.getMetricName();
         metric.strategy = StringUtils.isEmpty(dto.getConflict())? UpdateStrategy.IGNORE: UpdateStrategy.parse(dto.getConflict());
-        if (dto.getDataPoints() == null) {
-            metric.dataPoints = new HashMap<>();
-        } else {
-            metric.dataPoints = dto.getDataPoints().entrySet().stream()
-                    .collect(Collectors.toMap(entry -> Long.valueOf(entry.getKey()), Map.Entry::getValue));
+        metric.dataPoints = new TreeMap<>();
+        if (dto.getDataPoints() != null) {
+            dto.getDataPoints().forEach((key, value) -> metric.dataPoints.put(Long.parseLong(key), value));
         }
         return metric;
     }
 
     public static boolean validateTimeseriesQueryDto(final TimeseriesQueryDto queryDto) throws TimeseriesException {
         if (ListUtils.isEmpty(queryDto.getQueryFields())) return false;
-        if (StringUtils.isEmpty(queryDto.getObjectId()) &&
-            StringUtils.isEmpty(queryDto.getVertexRID()) &&
-            StringUtils.isEmpty(queryDto.getSql())){
-        }
         if (!StringUtils.isEmpty(queryDto.getObjectId())) {
             if (queryDto.getObjectId().indexOf(':') == -1) throw new MessageParsingException("id must be in form of {type}:{id}");
         } else if (!StringUtils.isEmpty(queryDto.getVertexRID())) {
